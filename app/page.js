@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-function LoginForm({ onLogin }) {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -18,10 +18,27 @@ function LoginForm({ onLogin }) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError(error.message)
-      setLoading(false)
+
+    // Skúsiť prihlásiť
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (signInError) {
+      // Ak používateľ neexistuje, vytvoriť ho
+      if (signInError.message.includes('Invalid') || signInError.message.includes('invalid') || signInError.message.includes('Database')) {
+        const { error: signUpError } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: { data: { full_name: email.split('@')[0] } }
+        })
+        if (signUpError) {
+          setError(signUpError.message)
+          setLoading(false)
+        }
+        // signUp triggers onAuthStateChange
+      } else {
+        setError(signInError.message)
+        setLoading(false)
+      }
     }
   }
 
@@ -77,10 +94,6 @@ function Dashboard({ user }) {
     load()
   }, [])
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-  }
-
   if (loading) return <main className="min-h-screen flex items-center justify-center"><p className="text-stone-400">Načítavam...</p></main>
 
   return (
@@ -93,7 +106,7 @@ function Dashboard({ user }) {
         </div>
         <div className="text-right">
           <p className="text-stone-500 text-sm mb-2">{user.email}</p>
-          <button onClick={handleSignOut} className="text-xs text-stone-400 hover:text-stone-600">
+          <button onClick={() => supabase.auth.signOut()} className="text-xs text-stone-400 hover:text-stone-600">
             Odhlásiť sa
           </button>
         </div>
@@ -137,8 +150,7 @@ function Dashboard({ user }) {
           </div>
         </div>
       )}
-
-      <div className="text-center mt-16 text-stone-400 text-xs">OPUS v0.2 — {new Date().getFullYear()}</div>
+      <div className="text-center mt-16 text-stone-400 text-xs">OPUS v0.3 — {new Date().getFullYear()}</div>
     </main>
   )
 }
@@ -152,11 +164,9 @@ export default function Home() {
       setUser(data.user)
       setChecking(false)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
