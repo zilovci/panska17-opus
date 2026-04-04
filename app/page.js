@@ -1,11 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import SignOutButton from './signout-button'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
-
-async function getStats() {
+async function getStats(supabase) {
   try {
     const [emails, docs, cases] = await Promise.all([
       supabase.from('emails').select('id', { count: 'exact', head: true }),
@@ -25,14 +22,27 @@ async function getStats() {
 export const revalidate = 60
 
 export default async function Home() {
-  const { emailCount, docCount, cases } = await getStats()
-  
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { emailCount, docCount, cases } = await getStats(supabase)
+
   return (
     <main className="max-w-4xl mx-auto px-6 py-16">
-      <div className="text-center mb-16">
-        <h1 className="text-5xl font-light tracking-wide mb-2">OPUS</h1>
-        <p className="text-stone-500 text-lg">Panská 17, Bratislava</p>
-        <p className="text-stone-400 text-sm mt-1">Právny informačný systém</p>
+      <div className="flex justify-between items-start mb-16">
+        <div>
+          <h1 className="text-5xl font-light tracking-wide mb-2">OPUS</h1>
+          <p className="text-stone-500 text-lg">Panská 17, Bratislava</p>
+          <p className="text-stone-400 text-sm mt-1">Právny informačný systém</p>
+        </div>
+        <div className="text-right">
+          <p className="text-stone-500 text-sm mb-2">{user.email}</p>
+          <SignOutButton />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-6 mb-16">
@@ -64,6 +74,7 @@ export default async function Home() {
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded ${
                   c.priority === 'high' ? 'bg-red-100 text-red-700' :
+                  c.priority === 'urgent' ? 'bg-red-200 text-red-800' :
                   c.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                   'bg-green-100 text-green-700'
                 }`}>{c.priority}</span>
@@ -74,7 +85,7 @@ export default async function Home() {
       )}
 
       <div className="text-center mt-16 text-stone-400 text-xs">
-        OPUS v0.1 — {new Date().getFullYear()}
+        OPUS v0.2 — {new Date().getFullYear()}
       </div>
     </main>
   )
