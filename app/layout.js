@@ -2,7 +2,7 @@ import './globals.css'
 
 export const metadata = {
   title: 'OPUS — Panská 17',
-  description: 'Právny informačný systém pre Panská 17, Bratislava',
+  description: 'Právny informačný systém',
 }
 
 export default function RootLayout({ children }) {
