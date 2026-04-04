@@ -17,13 +17,13 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
-      setError('Nesprávny email alebo heslo')
+      setError(error.message)
       setLoading(false)
     } else {
       router.push('/')
