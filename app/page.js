@@ -1,14 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
-import { createClient as createServerClient } from '@/lib/supabase/server'
-import SignOutButton from './signout-button'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
 async function getStats() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
   try {
     const [emails, docs, cases] = await Promise.all([
       supabase.from('emails').select('id', { count: 'exact', head: true }),
@@ -28,27 +25,14 @@ async function getStats() {
 export const revalidate = 60
 
 export default async function Home() {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
-
   const { emailCount, docCount, cases } = await getStats()
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-16">
-      <div className="flex justify-between items-start mb-16">
-        <div>
-          <h1 className="text-5xl font-light tracking-wide mb-2">OPUS</h1>
-          <p className="text-stone-500 text-lg">Panská 17, Bratislava</p>
-          <p className="text-stone-400 text-sm mt-1">Právny informačný systém</p>
-        </div>
-        <div className="text-right">
-          <p className="text-stone-500 text-sm mb-2">{user.email}</p>
-          <SignOutButton />
-        </div>
+      <div className="text-center mb-16">
+        <h1 className="text-5xl font-light tracking-wide mb-2">OPUS</h1>
+        <p className="text-stone-500 text-lg">Panská 17, Bratislava</p>
+        <p className="text-stone-400 text-sm mt-1">Právny informačný systém</p>
       </div>
 
       <div className="grid grid-cols-3 gap-6 mb-16">
