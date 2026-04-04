@@ -1,8 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { createClient as createServerClient } from '@/lib/supabase/server'
 import SignOutButton from './signout-button'
 
-async function getStats(supabase) {
+async function getStats() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
   try {
     const [emails, docs, cases] = await Promise.all([
       supabase.from('emails').select('id', { count: 'exact', head: true }),
@@ -22,14 +28,14 @@ async function getStats(supabase) {
 export const revalidate = 60
 
 export default async function Home() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     redirect('/login')
   }
 
-  const { emailCount, docCount, cases } = await getStats(supabase)
+  const { emailCount, docCount, cases } = await getStats()
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-16">
