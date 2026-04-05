@@ -1,3 +1,30 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --red: #E24B4A;
+  --red-bg: #FCEBEB;
+  --amber: #EF9F27;
+  --amber-bg: #FAEEDA;
+  --teal: #1D9E75;
+  --teal-bg: #E1F5EE;
+  --blue: #378ADD;
+  --blue-bg: #E6F1FB;
+}
+
+* { font-family: 'DM Sans', system-ui, sans-serif; }
+code, .font-mono { font-family: 'DM Mono', monospace; }
+
+@layer utilities {
+  .status-urgent { background: var(--red-bg); color: var(--red); }
+  .status-waiting { background: var(--amber-bg); color: var(--amber); }
+  .status-active { background: var(--teal-bg); color: var(--teal); }
+  .status-info { background: var(--blue-bg); color: var(--blue); }
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
