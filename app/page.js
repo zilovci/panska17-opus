@@ -250,9 +250,10 @@ function Dashboard({ user }) {
   const [selected, setSelected] = useState(null) // {item, type}
 
   const loadData = useCallback(async function() {
-    var [emailsR, docsR, kauzyR, konaniaR, aktivityR, tasksR, strategiaR, kkR, kaR] = await Promise.all([
+    var [emailsR, docsR, temyR, kauzyR, konaniaR, aktivityR, tasksR, strategiaR, kkR, kaR] = await Promise.all([
       supabase.from('emails').select('id', { count: 'exact', head: true }),
       supabase.from('documents').select('id', { count: 'exact', head: true }),
+      supabase.from('temy').select('*').order('id'),
       supabase.from('kauzy').select('*').order('priority'),
       supabase.from('konania').select('*').order('id'),
       supabase.from('aktivity').select('*').order('priority'),
@@ -264,6 +265,7 @@ function Dashboard({ user }) {
     setData({
       emailCount: emailsR.count || 0,
       docCount: docsR.count || 0,
+      temy: temyR.data || [],
       kauzy: kauzyR.data || [],
       konania: konaniaR.data || [],
       aktivity: aktivityR.data || [],
@@ -332,7 +334,7 @@ function Dashboard({ user }) {
               <h1 className="text-xl md:text-2xl font-extralight tracking-wide text-stone-800">OPUS</h1>
             </div>
             <div className="hidden md:flex items-center gap-4 pl-6 border-l border-stone-100">
-              <div className="text-center"><div className="text-lg font-light text-stone-700">{data.kauzy.length}</div><div className="text-[9px] text-stone-400 uppercase tracking-wider">Kauz</div></div>
+              <div className="text-center"><div className="text-lg font-light text-stone-700">{data.temy.length}</div><div className="text-[9px] text-stone-400 uppercase tracking-wider">Tém</div></div>
               <div className="text-center"><div className="text-lg font-light text-stone-700">{data.konania.length}</div><div className="text-[9px] text-stone-400 uppercase tracking-wider">Konaní</div></div>
               <div className="text-center"><div className="text-lg font-light text-stone-700">{data.emailCount.toLocaleString()}</div><div className="text-[9px] text-stone-400 uppercase tracking-wider">Emailov</div></div>
               <div className="text-center"><div className="text-lg font-light text-stone-700">{data.docCount.toLocaleString()}</div><div className="text-[9px] text-stone-400 uppercase tracking-wider">Dokumentov</div></div>
@@ -394,7 +396,7 @@ function Dashboard({ user }) {
 
         {/* MOBILE COUNTERS */}
         <div className="flex md:hidden justify-around py-3 bg-white rounded-2xl border border-stone-100 shadow-sm">
-          <div className="text-center"><div className="text-lg font-light text-stone-700">{data.kauzy.length}</div><div className="text-[8px] text-stone-400 uppercase tracking-wider">Kauz</div></div>
+          <div className="text-center"><div className="text-lg font-light text-stone-700">{data.temy.length}</div><div className="text-[8px] text-stone-400 uppercase tracking-wider">Tém</div></div>
           <div className="text-center"><div className="text-lg font-light text-stone-700">{data.konania.length}</div><div className="text-[8px] text-stone-400 uppercase tracking-wider">Konaní</div></div>
           <div className="text-center"><div className="text-lg font-light text-stone-700">{data.emailCount.toLocaleString()}</div><div className="text-[8px] text-stone-400 uppercase tracking-wider">Emailov</div></div>
           <div className="text-center"><div className="text-lg font-light text-stone-700">{data.docCount.toLocaleString()}</div><div className="text-[8px] text-stone-400 uppercase tracking-wider">Dokumentov</div></div>
@@ -402,7 +404,7 @@ function Dashboard({ user }) {
 
         {/* METRICS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm"><div className="text-3xl font-light tracking-tight" style={{color:'#1E40AF'}}>{activeKauzy.length}</div><div className="text-[11px] text-stone-400 mt-1 uppercase tracking-wider font-medium">Aktívne kauzy</div></div>
+          <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm"><div className="text-3xl font-light tracking-tight" style={{color:'#1E40AF'}}>{data.temy.length}</div><div className="text-[11px] text-stone-400 mt-1 uppercase tracking-wider font-medium">Témy</div></div>
           <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm"><div className="text-3xl font-light tracking-tight" style={{color: activeKonania.length > 0 ? '#991B1B' : '#9CA3AF'}}>{activeKonania.length}</div><div className="text-[11px] text-stone-400 mt-1 uppercase tracking-wider font-medium">Aktívne konania</div></div>
           <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm"><div className="text-3xl font-light tracking-tight" style={{color: overdueTasks.length > 0 ? '#E24B4A' : '#378ADD'}}>{openTasks.length}</div><div className="text-[11px] text-stone-400 mt-1 uppercase tracking-wider font-medium">Otvorené úlohy</div></div>
           <div className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm"><div className="text-3xl font-light tracking-tight" style={{color: overdueTasks.length > 0 ? '#E24B4A' : '#9CA3AF'}}>{overdueTasks.length}</div><div className="text-[11px] text-stone-400 mt-1 uppercase tracking-wider font-medium">Po termíne</div></div>
@@ -413,35 +415,17 @@ function Dashboard({ user }) {
           {/* LEFT 2/3 */}
           <div className="lg:col-span-2 space-y-6">
 
-            {/* KAUZY */}
+            {/* TÉMY */}
             <section className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
-              <div className="px-5 md:px-6 py-4 border-b border-stone-50 flex justify-between items-center">
-                <h2 className="text-sm font-semibold text-blue-800 uppercase tracking-wider">Kauzy</h2>
-                <span className="text-[10px] text-stone-400">{activeKauzy.length} aktívnych</span>
+              <div className="px-5 md:px-6 py-4 border-b border-stone-50">
+                <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">Témy</h2>
               </div>
               <div className="p-3 md:p-4 grid gap-3">
-                {data.kauzy.sort(function(a,b){return (priorityOrder[a.priority]||9) - (priorityOrder[b.priority]||9)}).map(function(k) {
-                  var st = sc(k.priority)
-                  var relKonania = getKonaniaForKauza(k.id)
+                {data.temy.map(function(tema) {
                   return (
-                    <div key={k.id} onClick={function(){setSelected({item:k, type:'kauza'})}}
-                      className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">{k.code}</span>
-                          <span className="text-xs px-2 py-0.5 rounded" style={{backgroundColor: sc(k.status).bg, color: sc(k.status).text}}>{sc(k.status).label}</span>
-                          <span className="text-xs px-2 py-0.5 rounded" style={{backgroundColor: st.bg, color: st.text}}>{st.label}</span>
-                        </div>
-                      </div>
-                      <h3 className="text-sm font-semibold text-stone-800 mb-1.5 group-hover:text-stone-950">{k.name}</h3>
-                      {k.goal && <div className="text-[11px] text-blue-600 mb-1 truncate">{k.goal}</div>}
-                      {relKonania.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {relKonania.map(function(ko) { return (
-                            <span key={ko.id} className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600">{ko.code} ({ko.our_role})</span>
-                          )})}
-                        </div>
-                      )}
+                    <div key={tema.id} className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group">
+                      <h3 className="text-sm font-semibold text-stone-800 group-hover:text-stone-950">{tema.name}</h3>
+                      {tema.description && <div className="text-[11px] text-stone-400 mt-1 truncate">{tema.description}</div>}
                     </div>
                   )
                 })}
@@ -539,9 +523,9 @@ function Dashboard({ user }) {
                 {data.emailCount.toLocaleString()} emailov &bull; {data.docCount.toLocaleString()} dokumentov
               </div>
               <div className="text-[11px] text-stone-500">
-                {data.kauzy.length} kauz &bull; {data.konania.length} konaní &bull; {data.aktivity.length} aktivít &bull; {data.tasks.length} úloh
+                {data.temy.length} tém &bull; {data.konania.length} konaní &bull; {data.aktivity.length} aktivít &bull; {data.tasks.length} úloh
               </div>
-              <div className="text-[10px] text-stone-300 mt-2">OPUS v0.5.1 &mdash; {new Date().getFullYear()}</div>
+              <div className="text-[10px] text-stone-300 mt-2">OPUS v0.7 &mdash; {new Date().getFullYear()}</div>
             </div>
           </div>
         </div>
