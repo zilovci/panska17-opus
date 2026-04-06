@@ -72,10 +72,8 @@ function LoginForm() {
 }
 
 // --- TEMA DETAIL ---
-function TemaDetail({ tema, onClose, konania, kauzy, tasks, temaKonania, temaKauzy }) {
+function TemaDetail({ tema, onClose, kauzy, tasks, temaKauzy }) {
   var color = temaColor(tema.id)
-  var relKIds = temaKonania.filter(function(tk){return tk.tema_id===tema.id}).map(function(tk){return tk.konanie_id})
-  var relKonania = konania.filter(function(k){return relKIds.indexOf(k.id)>=0})
   var relCIds = temaKauzy.filter(function(tk){return tk.tema_id===tema.id}).map(function(tk){return tk.kauza_id})
   var relKauzy = kauzy.filter(function(k){return relCIds.indexOf(k.id)>=0})
   return (
@@ -108,16 +106,7 @@ function TemaDetail({ tema, onClose, konania, kauzy, tasks, temaKonania, temaKau
               </div>)})}</div></div>
           ) : (<div className="text-center py-4 text-stone-300 text-sm">Zatiaľ žiadne kauzy pod touto témou</div>)}
 
-          {relKonania.length > 0 && (
-            <div><span className="text-stone-400 text-xs uppercase tracking-wider font-bold">Konania ({relKonania.length})</span>
-            <div className="mt-2 space-y-2">{relKonania.map(function(k){var st=sc(k.status);return(
-              <div key={k.id} className="bg-red-50 rounded-xl p-3 border border-red-100">
-                <div className="flex items-center gap-2 mb-1"><span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded bg-red-200 text-red-800">{k.code}</span><span className="text-xs px-2 py-0.5 rounded" style={{backgroundColor:st.bg,color:st.text}}>{st.label}</span><span className="text-[10px] text-stone-400">{k.our_role}</span></div>
-                <div className="text-sm font-medium text-stone-800">{k.name}</div>
-                <div className="flex flex-wrap gap-x-4 text-[11px] text-stone-400 mt-0.5">{k.case_number && <span>sp.zn. {k.case_number}</span>}{k.court && <span>{k.court}</span>}</div>
-                <div className="flex gap-4 mt-0.5 text-[11px]">{k.our_lawyer && <span style={{color:'#1D9E75'}}>→ {k.our_lawyer}</span>}{k.their_lawyer && <span className="text-red-400">vs. {k.their_lawyer}</span>}</div>
-              </div>)})}</div></div>
-          )}
+
         </div>
       </div>
     </div>
@@ -187,7 +176,7 @@ function Dashboard({ user }) {
   const [selectedKonanie, setSelectedKonanie] = useState(null)
 
   var loadData = useCallback(async function() {
-    var [emailsR,docsR,temyR,kauzyR,konaniaR,aktivityR,tasksR,strategiaR,tkR,tkoR] = await Promise.all([
+    var [emailsR,docsR,temyR,kauzyR,konaniaR,aktivityR,tasksR,strategiaR,tkR] = await Promise.all([
       supabase.from('emails').select('id',{count:'exact',head:true}),
       supabase.from('documents').select('id',{count:'exact',head:true}),
       supabase.from('temy').select('*').order('id'),
@@ -197,9 +186,8 @@ function Dashboard({ user }) {
       supabase.from('tasks').select('*').order('due_date',{ascending:true,nullsFirst:false}),
       supabase.from('strategia').select('*').limit(1),
       supabase.from('tema_kauzy').select('*'),
-      supabase.from('tema_konania').select('*'),
     ])
-    setData({emailCount:emailsR.count||0,docCount:docsR.count||0,temy:temyR.data||[],kauzy:kauzyR.data||[],konania:konaniaR.data||[],aktivity:aktivityR.data||[],tasks:tasksR.data||[],strategia:(strategiaR.data||[])[0]||null,temaKauzy:tkR.data||[],temaKonania:tkoR.data||[]})
+    setData({emailCount:emailsR.count||0,docCount:docsR.count||0,temy:temyR.data||[],kauzy:kauzyR.data||[],konania:konaniaR.data||[],aktivity:aktivityR.data||[],tasks:tasksR.data||[],strategia:(strategiaR.data||[])[0]||null,temaKauzy:tkR.data||[],})
     setLoading(false)
   },[])
 
@@ -276,7 +264,7 @@ function Dashboard({ user }) {
                 {data.temy.map(function(tema){
                   var color = temaColor(tema.id)
                   var kc = data.temaKauzy.filter(function(tk){return tk.tema_id===tema.id}).length
-                  var nc = data.temaKonania.filter(function(tk){return tk.tema_id===tema.id}).length
+                  
                   return (
                     <div key={tema.id} onClick={function(){setSelectedTema(tema)}} className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group relative overflow-hidden">
                       <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{backgroundColor:color}} />
@@ -285,8 +273,8 @@ function Dashboard({ user }) {
                         <h3 className="text-sm font-semibold text-stone-800 group-hover:text-stone-950">{tema.name}</h3>
                         <div className="flex gap-3 mt-2 text-[11px] text-stone-400">
                           {kc>0 && <span className="text-blue-500">{kc} kauz</span>}
-                          {nc>0 && <span className="text-red-500">{nc} konaní</span>}
-                          {kc===0 && nc===0 && <span>prázdna</span>}
+                          
+                          {kc===0 && <span>prázdna</span>}
                         </div>
                       </div>
                     </div>
@@ -340,7 +328,7 @@ function Dashboard({ user }) {
         </div>
       </div>
 
-      {selectedTema && <TemaDetail tema={selectedTema} onClose={function(){setSelectedTema(null)}} konania={data.konania} kauzy={data.kauzy} tasks={data.tasks} temaKonania={data.temaKonania} temaKauzy={data.temaKauzy} />}
+      {selectedTema && <TemaDetail tema={selectedTema} onClose={function(){setSelectedTema(null)}} kauzy={data.kauzy} tasks={data.tasks} temaKauzy={data.temaKauzy} />}
       {selectedKonanie && <KonanieDetail item={selectedKonanie} onClose={function(){setSelectedKonanie(null)}} tasks={data.tasks} />}
     </main>
   )
