@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import Link from 'next/link'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -84,7 +85,7 @@ function KauzyList({ kauzy, label, onClose, vzorce, kauzaVzorce }) {
             var st = sc(k.priority || k.status)
             var myVzorce = kauzaVzorce.filter(function(kv){return kv.kauza_id === k.id}).map(function(kv){return vzorce.find(function(v){return v.id === kv.vzorec_id})}).filter(Boolean)
             return (
-              <div key={k.id} className="bg-white rounded-xl border border-stone-100 p-4 overflow-hidden">
+              <Link href={'/kauza/' + k.id} key={k.id} className="block bg-white rounded-xl border border-stone-100 p-4 overflow-hidden hover:shadow-md hover:border-stone-200">
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded" style={{backgroundColor: st.bg, color: st.text}}>{st.label}</span>
                 </div>
@@ -95,7 +96,7 @@ function KauzyList({ kauzy, label, onClose, vzorce, kauzaVzorce }) {
                     {myVzorce.map(function(v){return <span key={v.id} className="text-[9px] font-medium px-1.5 py-0.5 rounded-full text-white" style={{backgroundColor: v.color}}>{v.name}</span>})}
                   </div>
                 )}
-              </div>
+              </Link>
             )
           })}
         </div>
