@@ -423,9 +423,9 @@ function Dashboard({ user }) {
               <div className="p-3 md:p-4 grid gap-3">
                 {data.temy.map(function(tema) {
                   return (
-                    <div key={tema.id} className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group">
-                      <h3 className="text-sm font-semibold text-stone-800 group-hover:text-stone-950">{tema.name}</h3>
-                      {tema.description && <div className="text-[11px] text-stone-400 mt-1 truncate">{tema.description}</div>}
+                    <div key={tema.id} className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group overflow-hidden">
+                      <h3 className="text-sm font-semibold text-stone-800 group-hover:text-stone-950 break-words">{tema.name}</h3>
+                      {tema.description && <div className="text-[11px] text-stone-400 mt-1 line-clamp-2 break-words">{tema.description}</div>}
                     </div>
                   )
                 })}
