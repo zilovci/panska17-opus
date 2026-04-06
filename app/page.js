@@ -482,14 +482,14 @@ function Dashboard({ user }) {
                 <div className="p-3 md:p-4 grid gap-3">
                   {data.aktivity.map(function(a) { return (
                     <div key={a.id} onClick={function(){setSelected({item:a, type:'aktivita'})}}
-                      className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group">
+                      className="bg-white rounded-xl border border-stone-100 p-4 hover:shadow-md hover:border-stone-200 cursor-pointer group overflow-hidden">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800">Aktivita</span>
                         <span className="text-xs px-2 py-0.5 rounded" style={{backgroundColor: sc(a.status).bg, color: sc(a.status).text}}>{sc(a.status).label}</span>
                         {a.is_recurring && <span className="text-[9px] text-stone-400">🔄 opakovaná</span>}
                       </div>
-                      <h3 className="text-sm font-semibold text-stone-800 group-hover:text-stone-950">{a.name}</h3>
-                      {a.description && <div className="text-[11px] text-stone-400 mt-0.5 truncate">{a.description}</div>}
+                      <h3 className="text-sm font-semibold text-stone-800 group-hover:text-stone-950 break-words">{a.name}</h3>
+                      {a.description && <div className="text-[11px] text-stone-400 mt-0.5 line-clamp-2 break-words">{a.description}</div>}
                     </div>
                   )})}
                 </div>
