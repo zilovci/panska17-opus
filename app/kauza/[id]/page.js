@@ -53,9 +53,23 @@ function EmailItem({ email }) {
 }
 
 function DocItem({ doc }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState(null)
+  const [loadingText, setLoadingText] = useState(false)
+
+  async function handleOpen() {
+    if (!open && text === null && doc.text_length > 0) {
+      setLoadingText(true)
+      var { data } = await supabase.from('documents').select('text_body').eq('id', doc.id).single()
+      setText(data ? data.text_body : '')
+      setLoadingText(false)
+    }
+    setOpen(!open)
+  }
+
   return (
-    <div className="border border-stone-100 rounded-xl p-4 hover:bg-stone-50 overflow-hidden">
-      <div className="flex items-start gap-3">
+    <div className="border border-stone-100 rounded-xl overflow-hidden">
+      <div onClick={handleOpen} className="p-4 cursor-pointer hover:bg-stone-50 flex items-start gap-3">
         <span className="text-[10px] px-1.5 py-0.5 bg-stone-200 rounded text-stone-600 font-mono flex-shrink-0 mt-0.5">{doc.extension}</span>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-stone-800 break-words">{doc.filename}</div>
@@ -65,7 +79,19 @@ function DocItem({ doc }) {
             {doc.text_length > 0 && <span>{doc.text_length.toLocaleString()} znakov</span>}
           </div>
         </div>
+        <span className="text-stone-300 text-xs mt-1 flex-shrink-0">{doc.text_length > 0 ? (open ? '▼' : '▶') : ''}</span>
       </div>
+      {open && (
+        <div className="border-t border-stone-100 p-4 bg-stone-50">
+          {loadingText && <div className="text-stone-300 text-sm animate-pulse">Načítavam text...</div>}
+          {text !== null && (
+            <div className="text-sm text-stone-700 whitespace-pre-wrap break-words max-h-[500px] overflow-y-auto leading-relaxed">{text || '(bez textu)'}</div>
+          )}
+          {!loadingText && text === null && doc.text_length === 0 && (
+            <div className="text-stone-300 text-sm">Text nebol extrahovaný</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
