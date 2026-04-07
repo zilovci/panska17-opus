@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
@@ -71,8 +71,7 @@ function DocItem({ doc }) {
 }
 
 export default function KauzaPage({ params }) {
-  var resolvedParams = use(params)
-  var kauzaId = parseInt(resolvedParams.id)
+  var kauzaId = parseInt(params.id)
   const [kauza, setKauza] = useState(null)
   const [emails, setEmails] = useState([])
   const [documents, setDocuments] = useState([])
