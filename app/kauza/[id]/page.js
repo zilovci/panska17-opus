@@ -124,32 +124,26 @@ export default function KauzaPage({ params }) {
   }
 
   async function searchEmails(keywords, page) {
-    var conditions = keywords.map(function(kw) {
-      var q = '%' + kw + '%'
-      return 'subject.ilike.' + q + ',text_body.ilike.' + q + ',from_name.ilike.' + q
-    }).join(',')
-    var { data, count } = await supabase.from('emails')
-      .select('id,subject,from_name,from_email,to_addresses,cc_addresses,date,text_body,has_attachments,attachment_count', { count: 'exact' })
-      .or(conditions)
-      .order('date', { ascending: false })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+    var { data } = await supabase.rpc('search_emails_by_keywords', {
+      keywords: keywords,
+      min_matches: keywords.length > 3 ? 2 : 1,
+      result_limit: PAGE_SIZE,
+      result_offset: page * PAGE_SIZE
+    })
     setEmails(data || [])
-    setEmailCount(count || 0)
+    setEmailCount(data && data.length > 0 ? Number(data[0].total_count) : 0)
     setEmailPage(page)
   }
 
   async function searchDocs(keywords, page) {
-    var conditions = keywords.map(function(kw) {
-      var q = '%' + kw + '%'
-      return 'filename.ilike.' + q + ',text_body.ilike.' + q
-    }).join(',')
-    var { data, count } = await supabase.from('documents')
-      .select('id,filename,extension,date,folder,text_length', { count: 'exact' })
-      .or(conditions)
-      .order('date', { ascending: false, nullsFirst: false })
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+    var { data } = await supabase.rpc('search_docs_by_keywords', {
+      keywords: keywords,
+      min_matches: keywords.length > 3 ? 2 : 1,
+      result_limit: PAGE_SIZE,
+      result_offset: page * PAGE_SIZE
+    })
     setDocuments(data || [])
-    setDocCount(count || 0)
+    setDocCount(data && data.length > 0 ? Number(data[0].total_count) : 0)
     setDocPage(page)
   }
 
