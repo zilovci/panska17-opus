@@ -83,6 +83,7 @@ export default function KauzaPage({ params }) {
   const [tab, setTab] = useState('emails')
   const [user, setUser] = useState(null)
   const [searchInKauza, setSearchInKauza] = useState('')
+  const [usingLinked, setUsingLinked] = useState(false)
   const [emailPage, setEmailPage] = useState(0)
   const [docPage, setDocPage] = useState(0)
   var PAGE_SIZE = 20
@@ -115,12 +116,52 @@ export default function KauzaPage({ params }) {
       setVzorce(vz || [])
     }
 
-    // Search emails by keywords
-    if (k.search_keywords && k.search_keywords.length > 0) {
+    // Load emails — first check kauza_emails links, fallback to keyword search
+    var { count: linkedEmailCount } = await supabase.from('kauza_emails').select('email_id', { count: 'exact', head: true }).eq('kauza_id', kauzaId)
+    if (linkedEmailCount > 0) {
+      setUsingLinked(true)
+      await loadLinkedEmails(kauzaId, 0)
+    } else if (k.search_keywords && k.search_keywords.length > 0) {
+      setUsingLinked(false)
       await searchEmails(k.search_keywords, 0)
+    }
+
+    // Load docs — same logic
+    var { count: linkedDocCount } = await supabase.from('kauza_documents').select('document_id', { count: 'exact', head: true }).eq('kauza_id', kauzaId)
+    if (linkedDocCount > 0) {
+      await loadLinkedDocs(kauzaId, 0)
+    } else if (k.search_keywords && k.search_keywords.length > 0) {
       await searchDocs(k.search_keywords, 0)
     }
     setLoading(false)
+  }
+
+  async function loadLinkedEmails(kid, page) {
+    var { data: links } = await supabase.from('kauza_emails').select('email_id').eq('kauza_id', kid)
+    var ids = (links || []).map(function(l){return l.email_id})
+    if (ids.length === 0) { setEmails([]); setEmailCount(0); return }
+    var { data, count } = await supabase.from('emails')
+      .select('id,subject,from_name,from_email,to_addresses,cc_addresses,date,text_body,has_attachments,attachment_count', { count: 'exact' })
+      .in('id', ids)
+      .order('date', { ascending: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+    setEmails(data || [])
+    setEmailCount(count || 0)
+    setEmailPage(page)
+  }
+
+  async function loadLinkedDocs(kid, page) {
+    var { data: links } = await supabase.from('kauza_documents').select('document_id').eq('kauza_id', kid)
+    var ids = (links || []).map(function(l){return l.document_id})
+    if (ids.length === 0) { setDocuments([]); setDocCount(0); return }
+    var { data, count } = await supabase.from('documents')
+      .select('id,filename,extension,date,folder,text_length', { count: 'exact' })
+      .in('id', ids)
+      .order('date', { ascending: false, nullsFirst: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+    setDocuments(data || [])
+    setDocCount(count || 0)
+    setDocPage(page)
   }
 
   async function searchEmails(keywords, page) {
@@ -238,7 +279,7 @@ export default function KauzaPage({ params }) {
         {/* TABS */}
         <div className="flex gap-1 bg-stone-100 rounded-xl p-1">
           <button onClick={function(){setTab('emails')}} className={'flex-1 py-2.5 rounded-lg text-sm font-medium transition ' + (tab === 'emails' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-500 hover:text-stone-700')}>
-            Emaily ({emailCount.toLocaleString()})
+            Emaily ({emailCount.toLocaleString()}) {usingLinked && <span className="text-[9px] text-indigo-400 ml-1">✦ overené</span>}
           </button>
           <button onClick={function(){setTab('docs')}} className={'flex-1 py-2.5 rounded-lg text-sm font-medium transition ' + (tab === 'docs' ? 'bg-white text-stone-800 shadow-sm' : 'text-stone-500 hover:text-stone-700')}>
             Dokumenty ({docCount.toLocaleString()})
@@ -253,10 +294,10 @@ export default function KauzaPage({ params }) {
             {/* Pagination */}
             {totalEmailPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-4">
-                <button disabled={emailPage === 0} onClick={function(){searchEmails(kauza.search_keywords, emailPage - 1)}}
+                <button disabled={emailPage === 0} onClick={function(){usingLinked ? loadLinkedEmails(kauzaId, emailPage - 1) : searchEmails(kauza.search_keywords, emailPage - 1)}}
                   className="px-3 py-1.5 text-sm rounded-lg border border-stone-200 disabled:opacity-30 hover:bg-stone-50">← Novšie</button>
                 <span className="text-[11px] text-stone-400">{emailPage + 1} / {totalEmailPages}</span>
-                <button disabled={emailPage >= totalEmailPages - 1} onClick={function(){searchEmails(kauza.search_keywords, emailPage + 1)}}
+                <button disabled={emailPage >= totalEmailPages - 1} onClick={function(){usingLinked ? loadLinkedEmails(kauzaId, emailPage + 1) : searchEmails(kauza.search_keywords, emailPage + 1)}}
                   className="px-3 py-1.5 text-sm rounded-lg border border-stone-200 disabled:opacity-30 hover:bg-stone-50">Staršie →</button>
               </div>
             )}
