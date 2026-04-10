@@ -57,15 +57,20 @@ function LoginForm() {
   )
 }
 
-function TaskRow({ t, onToggle }) {
+function TaskRow({ t, onToggle, onSelect, contextCount }) {
   var st = sc(t.priority); var isDone = t.status === 'done'
   return (
-    <div className={'flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-stone-50 ' + (isDone ? 'opacity-50' : '')}>
-      <button onClick={function(){onToggle(t)}} className={'mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ' + (isDone ? 'bg-stone-300 border-stone-300 text-white' : 'border-stone-300 hover:border-stone-500')}>{isDone && <span className="text-[10px]">✓</span>}</button>
+    <div className={'flex items-start gap-3 py-2.5 px-3 rounded-lg hover:bg-stone-50 cursor-pointer group ' + (isDone ? 'opacity-50' : '')} onClick={function(){onSelect(t)}}>
+      <button onClick={function(e){e.stopPropagation();onToggle(t)}} className={'mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ' + (isDone ? 'bg-stone-300 border-stone-300 text-white' : 'border-stone-300 hover:border-stone-500')}>{isDone && <span className="text-[10px]">✓</span>}</button>
       <div className="flex-1 min-w-0">
-        <div className={'text-sm leading-snug ' + (isDone ? 'line-through text-stone-400' : 'text-stone-700')}>{t.title}</div>
-        <div className="flex items-center gap-2 mt-0.5"><span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{backgroundColor:st.bg,color:st.text}}>{st.label}</span>{t.due_date && <span className={'text-[10px] ' + (isOverdue(t.due_date) ? 'text-red-500 font-medium' : 'text-stone-400')}>{formatDate(t.due_date)}</span>}</div>
+        <div className={'text-sm leading-snug group-hover:text-stone-900 ' + (isDone ? 'line-through text-stone-400' : 'text-stone-700')}>{t.title}</div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{backgroundColor:st.bg,color:st.text}}>{st.label}</span>
+          {t.due_date && <span className={'text-[10px] ' + (isOverdue(t.due_date) ? 'text-red-500 font-medium' : isSoon(t.due_date) ? 'text-amber-500 font-medium' : 'text-stone-400')}>{formatDate(t.due_date)}</span>}
+          {contextCount > 0 && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-500 font-medium">{contextCount} zázn.</span>}
+        </div>
       </div>
+      <span className="text-stone-300 group-hover:text-stone-400 text-xs mt-1">›</span>
     </div>
   )
 }
@@ -114,9 +119,11 @@ function Dashboard({ user }) {
   const [selectedTema, setSelectedTema] = useState(null)
   const [selectedVzorec, setSelectedVzorec] = useState(null)
   const [selectedKonanie, setSelectedKonanie] = useState(null)
+  const [selectedTask, setSelectedTask] = useState(null)
+  const [taskContexts, setTaskContexts] = useState([])
 
   var loadData = useCallback(async function() {
-    var [emailsR,docsR,temyR,kauzyR,konaniaR,tasksR,strategiaR,tkR,vzorceR,kvR] = await Promise.all([
+    var [emailsR,docsR,temyR,kauzyR,konaniaR,tasksR,strategiaR,tkR,vzorceR,kvR,tcR] = await Promise.all([
       supabase.from('emails').select('id',{count:'exact',head:true}),
       supabase.from('documents').select('id',{count:'exact',head:true}),
       supabase.from('temy').select('*').order('id'),
@@ -127,8 +134,9 @@ function Dashboard({ user }) {
       supabase.from('tema_kauzy').select('*'),
       supabase.from('vzorce').select('*').order('id'),
       supabase.from('kauza_vzorce').select('*'),
+      supabase.from('task_context').select('*').order('created_at',{ascending:false}),
     ])
-    setData({emailCount:emailsR.count||0,docCount:docsR.count||0,temy:temyR.data||[],kauzy:kauzyR.data||[],konania:konaniaR.data||[],tasks:tasksR.data||[],strategia:(strategiaR.data||[])[0]||null,temaKauzy:tkR.data||[],vzorce:vzorceR.data||[],kauzaVzorce:kvR.data||[]})
+    setData({emailCount:emailsR.count||0,docCount:docsR.count||0,temy:temyR.data||[],kauzy:kauzyR.data||[],konania:konaniaR.data||[],tasks:tasksR.data||[],strategia:(strategiaR.data||[])[0]||null,temaKauzy:tkR.data||[],vzorce:vzorceR.data||[],kauzaVzorce:kvR.data||[],taskContexts:tcR.data||[]})
     setLoading(false)
   },[])
 
@@ -266,15 +274,15 @@ function Dashboard({ user }) {
             <section className="bg-white rounded-2xl border border-stone-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-stone-50 flex justify-between items-center"><h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wider">Úlohy</h2><span className="text-[10px] text-stone-400">{openTasks.length} otvorených</span></div>
               <div className="p-2 max-h-[500px] overflow-y-auto">
-                {openTasks.map(function(t){return <TaskRow key={t.id} t={t} onToggle={toggleTask} />})}
-                {doneTasks.length>0 && <details className="mt-2"><summary className="text-[10px] text-stone-400 uppercase tracking-wider px-3 py-2 cursor-pointer hover:text-stone-600">Hotové ({doneTasks.length})</summary>{doneTasks.map(function(t){return <TaskRow key={t.id} t={t} onToggle={toggleTask} />})}</details>}
+                {openTasks.map(function(t){var cc=(data.taskContexts||[]).filter(function(tc){return tc.task_id===t.id}).length;return <TaskRow key={t.id} t={t} onToggle={toggleTask} onSelect={function(task){setSelectedTask(task)}} contextCount={cc} />})}
+                {doneTasks.length>0 && <details className="mt-2"><summary className="text-[10px] text-stone-400 uppercase tracking-wider px-3 py-2 cursor-pointer hover:text-stone-600">Hotové ({doneTasks.length})</summary>{doneTasks.map(function(t){var cc=(data.taskContexts||[]).filter(function(tc){return tc.task_id===t.id}).length;return <TaskRow key={t.id} t={t} onToggle={toggleTask} onSelect={function(task){setSelectedTask(task)}} contextCount={cc} />})}</details>}
               </div>
             </section>
             <div className="bg-stone-100/50 rounded-2xl p-4 text-center space-y-1">
               <div className="text-[10px] text-stone-400 uppercase tracking-wider font-medium">Databáza</div>
               <div className="text-[11px] text-stone-500">{data.emailCount.toLocaleString()} emailov &bull; {data.docCount.toLocaleString()} dokumentov</div>
               <div className="text-[11px] text-stone-500">{data.temy.length} tém &bull; {data.kauzy.length} kauz &bull; {data.konania.length} konaní</div>
-              <div className="text-[10px] text-stone-300 mt-2">OPUS v0.7 &mdash; {new Date().getFullYear()}</div>
+              <div className="text-[10px] text-stone-300 mt-2">OPUS v0.8 &mdash; {new Date().getFullYear()}</div>
             </div>
           </div>
         </div>
@@ -304,6 +312,77 @@ function Dashboard({ user }) {
           </div>
         </div>
       )}
+
+      {/* TASK DETAIL MODAL */}
+      {selectedTask && (function(){
+        var st = sc(selectedTask.priority)
+        var contexts = (data.taskContexts||[]).filter(function(tc){return tc.task_id===selectedTask.id})
+        var typeConfig = {
+          research: { icon: '🔍', label: 'Zistenia', bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-700' },
+          draft: { icon: '📝', label: 'Koncept', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700' },
+          evidence: { icon: '📎', label: 'Dôkaz', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700' },
+          decision: { icon: '⚖️', label: 'Rozhodnutie', bg: 'bg-violet-50', border: 'border-violet-100', text: 'text-violet-700' },
+          note: { icon: '✏️', label: 'Poznámka', bg: 'bg-stone-50', border: 'border-stone-200', text: 'text-stone-600' },
+        }
+        return (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={function(){setSelectedTask(null)}}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto" onClick={function(e){e.stopPropagation()}}>
+              {/* Header */}
+              <div className="p-6 border-b border-stone-100">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded" style={{backgroundColor:st.bg,color:st.text}}>{st.label}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded" style={{backgroundColor:sc(selectedTask.status).bg,color:sc(selectedTask.status).text}}>{sc(selectedTask.status).label}</span>
+                      {selectedTask.due_date && <span className={'text-[10px] font-medium px-2 py-0.5 rounded-full ' + (isOverdue(selectedTask.due_date) ? 'bg-red-100 text-red-600' : isSoon(selectedTask.due_date) ? 'bg-amber-100 text-amber-600' : 'bg-stone-100 text-stone-500')}>{formatDate(selectedTask.due_date)}</span>}
+                    </div>
+                    <h2 className="text-lg font-semibold text-stone-800 break-words">{selectedTask.title}</h2>
+                  </div>
+                  <button onClick={function(){setSelectedTask(null)}} className="text-stone-400 hover:text-stone-600 text-xl p-1 ml-4">✕</button>
+                </div>
+                {selectedTask.description && <p className="text-sm text-stone-500 mt-3 leading-relaxed">{selectedTask.description}</p>}
+                {selectedTask.context_summary && <div className="mt-3 text-xs text-stone-400 bg-stone-50 rounded-lg px-3 py-2">{selectedTask.context_summary}</div>}
+              </div>
+
+              {/* Context items */}
+              <div className="p-6">
+                {contexts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-stone-300 text-3xl mb-2">∅</div>
+                    <div className="text-sm text-stone-400">Žiadny kontext — bude doplnený z chatov s Claude</div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3">Kontext ({contexts.length})</div>
+                    {contexts.map(function(ctx) {
+                      var cfg = typeConfig[ctx.context_type] || typeConfig.note
+                      return (
+                        <div key={ctx.id} className={'rounded-xl border p-4 ' + cfg.bg + ' ' + cfg.border}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm">{cfg.icon}</span>
+                            <span className={'text-[10px] font-bold uppercase tracking-wider ' + cfg.text}>{cfg.label}</span>
+                            <span className="text-[10px] text-stone-400 ml-auto">{formatDate(ctx.created_at)}</span>
+                          </div>
+                          <div className="text-sm font-medium text-stone-700 mb-1">{ctx.title}</div>
+                          <div className="text-[13px] text-stone-600 whitespace-pre-line leading-relaxed break-words">{ctx.content}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-stone-100 flex items-center justify-between">
+                <div className="text-[10px] text-stone-300">ID: {selectedTask.id} {selectedTask.source && <span>• {selectedTask.source}</span>}</div>
+                <button onClick={function(){toggleTask(selectedTask);setSelectedTask(null)}} className={'text-xs px-4 py-2 rounded-lg font-medium ' + (selectedTask.status==='done' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200')}>
+                  {selectedTask.status==='done' ? 'Znova otvoriť' : 'Označiť ako hotové'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </main>
   )
 }
