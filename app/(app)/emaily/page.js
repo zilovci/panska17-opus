@@ -55,6 +55,18 @@ function snippet(text, len) {
 function EmailItem({ email, selected, onClick }) {
   var isSelected = selected && selected.id === email.id
   var dirClass = email.direction === 'sent' ? 'border-l-blue-400' : 'border-l-transparent'
+  
+  // Pre odoslané: zobraz komu. Pre prijaté: zobraz od koho.
+  var displayName = ''
+  if (email.direction === 'sent' && email.to_addresses && email.to_addresses.length > 0) {
+    var firstTo = email.to_addresses[0]
+    // Skús zobraziť čitateľné meno z emailovej adresy
+    var nameMatch = firstTo.match(/^([^@]+)/)
+    displayName = '→ ' + (nameMatch ? nameMatch[1].replace(/[._]/g, ' ') : firstTo)
+    if (email.to_addresses.length > 1) displayName += ' +' + (email.to_addresses.length - 1)
+  } else {
+    displayName = email.from_name || email.from_email || '(neznámy)'
+  }
 
   return (
     <button
@@ -62,8 +74,8 @@ function EmailItem({ email, selected, onClick }) {
       className={'w-full text-left px-4 py-3 border-l-[3px] transition-colors ' + dirClass + ' ' + (isSelected ? 'bg-stone-100' : 'hover:bg-stone-50')}
     >
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
-        <span className="text-[13px] font-medium text-stone-800 truncate">
-          {email.direction === 'sent' ? '→ ' : ''}{email.from_name || email.from_email || '(neznámy)'}
+        <span className={'text-[13px] font-medium truncate ' + (email.direction === 'sent' ? 'text-blue-700' : 'text-stone-800')}>
+          {displayName}
         </span>
         <span className="text-[11px] text-stone-400 whitespace-nowrap flex-shrink-0">{formatDate(email.date)}</span>
       </div>
