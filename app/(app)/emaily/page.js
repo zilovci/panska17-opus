@@ -230,11 +230,20 @@ export default function EmilyPage() {
   var [dateFrom, setDateFrom] = useState('')
   var [dateTo, setDateTo] = useState('')
   var [showFilters, setShowFilters] = useState(false)
+  var [collection, setCollection] = useState('')
+  var [collections, setCollections] = useState([])
 
   var debouncedSearch = useDebounce(search, 400)
   var listRef = useRef(null)
   var [leftWidth, setLeftWidth] = useState(400)
   var dragging = useRef(false)
+
+  // ─── Načítať kolekcie ──────────────────────────────────
+  useEffect(function() {
+    supabase.from('email_collections').select('id, name').order('name').then(function(res) {
+      if (res.data) setCollections(res.data)
+    })
+  }, [])
 
   // ─── Drag handler pre posúvateľný divider ──────────────
   useEffect(function() {
@@ -260,6 +269,20 @@ export default function EmilyPage() {
   var fetchEmails = useCallback(async function() {
     setLoading(true)
     try {
+      // Ak je vybraná kolekcia, najprv načítaj email IDs
+      var collectionEmailIds = null
+      if (collection) {
+        var { data: items } = await supabase
+          .from('email_collection_items')
+          .select('email_id')
+          .eq('collection_id', collection)
+          .order('sort_order')
+        collectionEmailIds = (items || []).map(function(i) { return i.email_id })
+        if (collectionEmailIds.length === 0) {
+          setEmails([]); setTotal(0); setLoading(false); return
+        }
+      }
+
       var offset = page * pageSize
       var query = supabase
         .from('emails')
@@ -267,6 +290,9 @@ export default function EmilyPage() {
         .order('date', { ascending: false })
         .range(offset, offset + pageSize - 1)
 
+      if (collectionEmailIds) {
+        query = query.in('id', collectionEmailIds)
+      }
       if (person) {
         query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
       }
@@ -285,7 +311,7 @@ export default function EmilyPage() {
       console.error('Chyba:', err)
     }
     setLoading(false)
-  }, [page, pageSize, person, folder, dateFrom, dateTo, debouncedSearch])
+  }, [page, pageSize, person, folder, dateFrom, dateTo, debouncedSearch, collection])
 
   useEffect(function() { fetchEmails() }, [fetchEmails])
 
@@ -295,7 +321,7 @@ export default function EmilyPage() {
     setSelected(null)
     setSelectedFull(null)
     setAttachments([])
-  }, [person, folder, dateFrom, dateTo, debouncedSearch])
+  }, [person, folder, dateFrom, dateTo, debouncedSearch, collection])
 
   // ─── Select email — load full content ──────────────────
   async function selectEmail(email) {
@@ -346,12 +372,24 @@ export default function EmilyPage() {
             />
             <button
               onClick={function() { setShowFilters(!showFilters) }}
-              className={'px-2.5 py-2 text-sm border rounded-lg transition-colors ' + (showFilters || person || folder || dateFrom || dateTo ? 'border-stone-400 bg-stone-100 text-stone-700' : 'border-stone-200 bg-white text-stone-400 hover:text-stone-600')}
+              className={'px-2.5 py-2 text-sm border rounded-lg transition-colors ' + (showFilters || person || folder || dateFrom || dateTo || collection ? 'border-stone-400 bg-stone-100 text-stone-700' : 'border-stone-200 bg-white text-stone-400 hover:text-stone-600')}
               title="Filtre"
             >⚙</button>
           </div>
           {showFilters && (
             <>
+              {collections.length > 0 && (
+                <select
+                  value={collection}
+                  onChange={function(e) { setCollection(e.target.value) }}
+                  className={'w-full text-[12px] px-2 py-1.5 border rounded-lg bg-white focus:outline-none ' + (collection ? 'border-amber-400 text-amber-700 bg-amber-50' : 'border-stone-200 text-stone-600')}
+                >
+                  <option value="">Všetky emaily</option>
+                  {collections.map(function(c) {
+                    return <option key={c.id} value={c.id}>📁 {c.name}</option>
+                  })}
+                </select>
+              )}
               <div className="flex gap-1.5">
                 <select
                   value={person}
@@ -387,9 +425,9 @@ export default function EmilyPage() {
                   className="flex-1 text-[11px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-500 focus:outline-none"
                   placeholder="Do"
                 />
-                {(dateFrom || dateTo || person || folder || search) && (
+                {(dateFrom || dateTo || person || folder || search || collection) && (
                   <button
-                    onClick={function() { setSearch(''); setPerson(''); setFolder(''); setDateFrom(''); setDateTo('') }}
+                    onClick={function() { setSearch(''); setPerson(''); setFolder(''); setDateFrom(''); setDateTo(''); setCollection('') }}
                     className="text-[11px] px-2 py-1.5 text-stone-400 hover:text-stone-600"
                     title="Vyčistiť filtre"
                   >✕</button>
