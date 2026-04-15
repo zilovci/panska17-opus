@@ -7,6 +7,7 @@ import { supabase } from '../components/opus'
 
 var NAV_ITEMS = [
   { href: '/',         label: 'Prehľad',  icon: '◉' },
+  { href: '/emaily',   label: 'Emaily',   icon: '✉' },
   { href: '/kauzy',    label: 'Kauzy',    icon: '◈' },
   { href: '/tasky',    label: 'Úlohy',    icon: '◇' },
   { href: '/hladanie', label: 'Hľadanie', icon: '⌕' },
@@ -102,7 +103,7 @@ function Shell({ user, children }) {
       {/* FOOTER */}
       <footer className="max-w-7xl mx-auto px-4 md:px-6 pb-8">
         <div className="text-center text-[10px] text-stone-300">
-          OPUS v0.9 — Opus non fingitur, sed factis demonstratur.
+          OPUS v1.0 — Opus non fingitur, sed factis demonstratur.
         </div>
       </footer>
     </div>
