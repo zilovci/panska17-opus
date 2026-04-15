@@ -148,7 +148,7 @@ function EmailDetail({ email, attachments }) {
           <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider mb-2">Prílohy ({attachments.length})</div>
           <div className="space-y-2">
             {attachments.map(function(att) {
-              var sizeMb = att.size_bytes ? (att.size_bytes / 1048576).toFixed(1) : '?'
+              var sizeStr = !att.size_bytes ? '? MB' : att.size_bytes < 102400 ? Math.round(att.size_bytes / 1024) + ' KB' : (att.size_bytes / 1048576).toFixed(1) + ' MB'
               var hasText = att.text_length > 0
               if (hasText) {
                 return (
@@ -156,7 +156,7 @@ function EmailDetail({ email, attachments }) {
                     <summary className="flex items-center gap-2 text-[12px] text-stone-600 px-3 py-2.5 cursor-pointer hover:bg-stone-50 rounded-lg list-none">
                       <span className="text-stone-400">📎</span>
                       <span className="font-medium truncate flex-1">{att.filename}</span>
-                      <span className="text-stone-400 flex-shrink-0">{sizeMb} MB</span>
+                      <span className="text-stone-400 flex-shrink-0">{sizeStr}</span>
                       <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[11px] flex-shrink-0">▸ Čítať</span>
                     </summary>
                     <div className="px-4 py-3 border-t border-stone-50">
@@ -169,7 +169,7 @@ function EmailDetail({ email, attachments }) {
                 <div key={att.id} className="flex items-center gap-2 text-[12px] text-stone-600 bg-white rounded-lg px-3 py-2.5 border border-stone-100">
                   <span className="text-stone-400">📎</span>
                   <span className="font-medium truncate flex-1">{att.filename}</span>
-                  <span className="text-stone-400 flex-shrink-0">{sizeMb} MB</span>
+                  <span className="text-stone-400 flex-shrink-0">{sizeStr}</span>
                   <span className="text-stone-300 text-[11px] flex-shrink-0">len na disku</span>
                 </div>
               )
@@ -262,6 +262,7 @@ export default function EmilyPage() {
         .from('email_attachments')
         .select('id, filename, content_type, size_bytes, extracted_text, text_length')
         .eq('email_id', email.id)
+        .neq('content_type', 'message/rfc822')
         .order('filename')
       setAttachments(data || [])
     }
