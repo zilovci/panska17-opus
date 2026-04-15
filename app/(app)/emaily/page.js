@@ -54,7 +54,9 @@ function snippet(text, len) {
 // ─── Email list item ───────────────────────────────────────
 function EmailItem({ email, selected, onClick }) {
   var isSelected = selected && selected.id === email.id
-  var dirClass = email.direction === 'sent' ? 'border-l-blue-400' : 'border-l-transparent'
+  // Modrý prúžok = odoslaný email, tmavý prúžok = vybraný email
+  var borderClass = isSelected ? 'border-l-stone-800' : (email.direction === 'sent' ? 'border-l-blue-300' : 'border-l-transparent')
+  var bgClass = isSelected ? 'bg-stone-100' : 'hover:bg-stone-50'
   
   // Pre odoslané: zobraz komu. Pre prijaté: zobraz od koho.
   var displayName = ''
@@ -76,7 +78,7 @@ function EmailItem({ email, selected, onClick }) {
   return (
     <button
       onClick={function() { onClick(email) }}
-      className={'w-full text-left px-4 py-3 border-l-[3px] transition-colors ' + dirClass + ' ' + (isSelected ? 'bg-stone-100' : 'hover:bg-stone-50')}
+      className={'w-full text-left px-4 py-3 border-l-[3px] transition-colors ' + borderClass + ' ' + bgClass}
     >
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
         <span className={'text-[13px] font-medium truncate ' + (email.direction === 'sent' ? 'text-blue-700' : 'text-stone-800')}>
