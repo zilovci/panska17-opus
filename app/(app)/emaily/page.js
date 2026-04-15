@@ -146,34 +146,37 @@ function EmailDetail({ email, attachments }) {
       {attachments && attachments.length > 0 && (
         <div className="px-6 py-4 border-t border-stone-100 bg-stone-50/50">
           <div className="text-[11px] font-medium text-stone-400 uppercase tracking-wider mb-2">Prílohy ({attachments.length})</div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {attachments.map(function(att) {
               var sizeMb = att.size_bytes ? (att.size_bytes / 1048576).toFixed(1) : '?'
               var hasText = att.text_length > 0
+              if (hasText) {
+                return (
+                  <details key={att.id} className="bg-white rounded-lg border border-stone-100 group">
+                    <summary className="flex items-center gap-2 text-[12px] text-stone-600 px-3 py-2.5 cursor-pointer hover:bg-stone-50 rounded-lg list-none">
+                      <span className="text-stone-400">📎</span>
+                      <span className="font-medium truncate flex-1">{att.filename}</span>
+                      <span className="text-stone-400 flex-shrink-0">{sizeMb} MB</span>
+                      <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded text-[11px] flex-shrink-0">▸ Čítať</span>
+                    </summary>
+                    <div className="px-4 py-3 border-t border-stone-50">
+                      <pre className="text-[13px] text-stone-600 leading-relaxed whitespace-pre-wrap font-[Georgia,serif] max-h-[500px] overflow-y-auto">{att.extracted_text}</pre>
+                    </div>
+                  </details>
+                )
+              }
               return (
-                <div key={att.id} className="flex items-center gap-2 text-[12px] text-stone-600 bg-white rounded-lg px-3 py-2 border border-stone-100">
+                <div key={att.id} className="flex items-center gap-2 text-[12px] text-stone-600 bg-white rounded-lg px-3 py-2.5 border border-stone-100">
                   <span className="text-stone-400">📎</span>
                   <span className="font-medium truncate flex-1">{att.filename}</span>
                   <span className="text-stone-400 flex-shrink-0">{sizeMb} MB</span>
-                  {hasText && <span className="text-emerald-500 flex-shrink-0" title="Extrahovaný text">✓ text</span>}
+                  <span className="text-stone-300 text-[11px] flex-shrink-0">len na disku</span>
                 </div>
               )
             })}
           </div>
         </div>
       )}
-
-      {/* Attachment text preview */}
-      {attachments && attachments.filter(function(a) { return a.extracted_text }).map(function(att) {
-        return (
-          <details key={'txt-' + att.id} className="px-6 py-3 border-t border-stone-50">
-            <summary className="text-[12px] text-stone-400 cursor-pointer hover:text-stone-600">
-              Obsah prílohy: {att.filename} ({att.text_length} znakov)
-            </summary>
-            <pre className="mt-2 text-[12px] text-stone-500 leading-relaxed whitespace-pre-wrap font-[Georgia,serif] max-h-[400px] overflow-y-auto bg-stone-50 rounded-lg p-4">{att.extracted_text}</pre>
-          </details>
-        )
-      })}
     </div>
   )
 }
