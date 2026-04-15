@@ -60,9 +60,14 @@ function EmailItem({ email, selected, onClick }) {
   var displayName = ''
   if (email.direction === 'sent' && email.to_addresses && email.to_addresses.length > 0) {
     var firstTo = email.to_addresses[0]
-    // Skús zobraziť čitateľné meno z emailovej adresy
-    var nameMatch = firstTo.match(/^([^@]+)/)
-    displayName = '→ ' + (nameMatch ? nameMatch[1].replace(/[._]/g, ' ') : firstTo)
+    // Formáty: "Meno <email>" alebo "email@dom.com" alebo "meno"
+    var nameFromAddr = firstTo
+    if (firstTo.indexOf('<') > 0) {
+      nameFromAddr = firstTo.substring(0, firstTo.indexOf('<')).trim()
+    } else if (firstTo.indexOf('@') > 0) {
+      nameFromAddr = firstTo.substring(0, firstTo.indexOf('@')).replace(/[._]/g, ' ')
+    }
+    displayName = '→ ' + nameFromAddr
     if (email.to_addresses.length > 1) displayName += ' +' + (email.to_addresses.length - 1)
   } else {
     displayName = email.from_name || email.from_email || '(neznámy)'
@@ -228,7 +233,7 @@ export default function EmilyPage() {
   function buildQuery(offset, limit) {
     var query = supabase
       .from('emails')
-      .select('id, date, from_name, from_email, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: offset === 0 ? 'exact' : undefined })
+      .select('id, date, from_name, from_email, to_addresses, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: offset === 0 ? 'exact' : undefined })
       .order('date', { ascending: false })
       .range(offset, offset + limit - 1)
 
