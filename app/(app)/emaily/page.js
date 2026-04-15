@@ -149,7 +149,7 @@ function EmailDetail({ email, attachments }) {
           <div className="space-y-1.5">
             {attachments.map(function(att) {
               var sizeMb = att.size_bytes ? (att.size_bytes / 1048576).toFixed(1) : '?'
-              var hasText = att.text_length && att.text_length > 0
+              var hasText = att.text_length > 0
               return (
                 <div key={att.id} className="flex items-center gap-2 text-[12px] text-stone-600 bg-white rounded-lg px-3 py-2 border border-stone-100">
                   <span className="text-stone-400">📎</span>
