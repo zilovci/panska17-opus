@@ -364,16 +364,16 @@ export default function EmilyPage() {
         <div className="px-4 py-2 text-[11px] text-stone-400 border-b border-stone-50 flex justify-between items-center">
           <span>{total > 0 ? total.toLocaleString('sk-SK') + ' emailov' : ''}</span>
           <div className="flex items-center gap-2">
+            {totalPages > 1 && <span>{page + 1}/{totalPages}</span>}
             <select
               value={pageSize}
               onChange={function(e) { setPageSize(Number(e.target.value)); setPage(0) }}
               className="text-[11px] px-1 py-0.5 border border-stone-200 rounded bg-white text-stone-500 focus:outline-none"
             >
               {PAGE_SIZES.map(function(s) {
-                return <option key={s} value={s}>{s} / str.</option>
+                return <option key={s} value={s}>{s}</option>
               })}
             </select>
-            {totalPages > 1 && <span>str. {page + 1} z {totalPages}</span>}
           </div>
         </div>
 
@@ -398,7 +398,7 @@ export default function EmilyPage() {
               disabled={page === 0}
               className="text-[12px] px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 disabled:opacity-30 hover:bg-stone-50"
             >← Novšie</button>
-            <span className="text-[11px] text-stone-400">{page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} z {total.toLocaleString('sk-SK')}</span>
+            <span className="text-[11px] text-stone-400">{page + 1}/{totalPages}</span>
             <button
               onClick={function() { goPage(page + 1) }}
               disabled={page >= totalPages - 1}
