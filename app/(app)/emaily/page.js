@@ -54,9 +54,8 @@ function snippet(text, len) {
 // ─── Email list item ───────────────────────────────────────
 function EmailItem({ email, selected, onClick }) {
   var isSelected = selected && selected.id === email.id
-  // Modrý prúžok = odoslaný email, tmavý prúžok = vybraný email
-  var borderClass = isSelected ? 'border-l-stone-800' : (email.direction === 'sent' ? 'border-l-blue-300' : 'border-l-transparent')
-  var bgClass = isSelected ? 'bg-stone-100' : 'hover:bg-stone-50'
+  var borderClass = isSelected ? 'border-l-stone-800' : 'border-l-transparent'
+  var bgClass = isSelected ? 'bg-amber-50' : 'hover:bg-stone-50'
   
   // Pre odoslané: zobraz komu. Pre prijaté: zobraz od koho.
   var displayName = ''
