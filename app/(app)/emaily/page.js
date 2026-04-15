@@ -78,7 +78,7 @@ function EmailItem({ email, selected, onClick }) {
   return (
     <button
       onClick={function() { onClick(email) }}
-      className={'w-full text-left px-4 py-2.5 transition-colors ' + bgClass}
+      className={'w-full text-left px-4 py-1.5 transition-colors ' + bgClass}
       style={{ borderLeft: isSelected ? '3px solid #292524' : '3px solid transparent' }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
