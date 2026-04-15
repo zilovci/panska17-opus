@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, formatDate, formatDateTime } from '../../components/opus'
 
-var PAGE_SIZE = 40
+var PAGE_SIZE = 200
 
 // ─── Debounce hook ─────────────────────────────────────────
 function useDebounce(value, delay) {
@@ -213,8 +213,7 @@ export default function EmilyPage() {
   var [emails, setEmails] = useState([])
   var [total, setTotal] = useState(0)
   var [loading, setLoading] = useState(true)
-  var [loadingMore, setLoadingMore] = useState(false)
-  var [hasMore, setHasMore] = useState(true)
+  var [page, setPage] = useState(0)
   var [selected, setSelected] = useState(null)
   var [selectedFull, setSelectedFull] = useState(null)
   var [attachments, setAttachments] = useState([])
@@ -228,86 +227,47 @@ export default function EmilyPage() {
 
   var debouncedSearch = useDebounce(search, 400)
   var listRef = useRef(null)
-  var offsetRef = useRef(0)
 
-  // ─── Build query with filters ──────────────────────────
-  function buildQuery(offset, limit) {
-    var query = supabase
-      .from('emails')
-      .select('id, date, from_name, from_email, to_addresses, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: offset === 0 ? 'exact' : undefined })
-      .order('date', { ascending: false })
-      .range(offset, offset + limit - 1)
-
-    if (person) {
-      query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
-    }
-    if (folder) query = query.eq('source_file', folder)
-    if (dateFrom) query = query.gte('date', dateFrom + 'T00:00:00')
-    if (dateTo) query = query.lte('date', dateTo + 'T23:59:59')
-    if (debouncedSearch) {
-      query = query.or('subject.ilike.%' + debouncedSearch + '%,text_body.ilike.%' + debouncedSearch + '%,from_name.ilike.%' + debouncedSearch + '%')
-    }
-    return query
-  }
-
-  // ─── Initial load ──────────────────────────────────────
-  var loadInitial = useCallback(async function() {
+  // ─── Fetch emails ──────────────────────────────────────
+  var fetchEmails = useCallback(async function() {
     setLoading(true)
-    offsetRef.current = 0
     try {
-      var { data, error, count } = await buildQuery(0, PAGE_SIZE)
+      var offset = page * PAGE_SIZE
+      var query = supabase
+        .from('emails')
+        .select('id, date, from_name, from_email, to_addresses, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: 'exact' })
+        .order('date', { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1)
+
+      if (person) {
+        query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
+      }
+      if (folder) query = query.eq('source_file', folder)
+      if (dateFrom) query = query.gte('date', dateFrom + 'T00:00:00')
+      if (dateTo) query = query.lte('date', dateTo + 'T23:59:59')
+      if (debouncedSearch) {
+        query = query.or('subject.ilike.%' + debouncedSearch + '%,text_body.ilike.%' + debouncedSearch + '%,from_name.ilike.%' + debouncedSearch + '%')
+      }
+
+      var { data, error, count } = await query
       if (error) throw error
       setEmails(data || [])
       setTotal(count || 0)
-      setHasMore((data || []).length === PAGE_SIZE)
-      offsetRef.current = (data || []).length
     } catch (err) {
       console.error('Chyba:', err)
     }
     setLoading(false)
-  }, [person, folder, dateFrom, dateTo, debouncedSearch])
+  }, [page, person, folder, dateFrom, dateTo, debouncedSearch])
 
-  // ─── Load more (infinite scroll) ───────────────────────
-  async function loadMore() {
-    if (loadingMore || !hasMore) return
-    setLoadingMore(true)
-    try {
-      var { data, error } = await buildQuery(offsetRef.current, PAGE_SIZE)
-      if (error) throw error
-      if (data && data.length > 0) {
-        setEmails(function(prev) { return prev.concat(data) })
-        offsetRef.current += data.length
-        setHasMore(data.length === PAGE_SIZE)
-      } else {
-        setHasMore(false)
-      }
-    } catch (err) {
-      console.error('Chyba:', err)
-    }
-    setLoadingMore(false)
-  }
+  useEffect(function() { fetchEmails() }, [fetchEmails])
 
-  useEffect(function() { loadInitial() }, [loadInitial])
-
-  // Reset on filter change
+  // Reset page on filter change
   useEffect(function() {
+    setPage(0)
     setSelected(null)
     setSelectedFull(null)
     setAttachments([])
   }, [person, folder, dateFrom, dateTo, debouncedSearch])
-
-  // ─── Scroll listener for infinite scroll ───────────────
-  useEffect(function() {
-    var el = listRef.current
-    if (!el) return
-    function onScroll() {
-      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
-        loadMore()
-      }
-    }
-    el.addEventListener('scroll', onScroll)
-    return function() { el.removeEventListener('scroll', onScroll) }
-  })
 
   // ─── Select email — load full content ──────────────────
   async function selectEmail(email) {
@@ -329,6 +289,13 @@ export default function EmilyPage() {
         .order('filename')
       setAttachments(atts || [])
     }
+  }
+
+  var totalPages = Math.ceil(total / PAGE_SIZE)
+
+  function goPage(newPage) {
+    setPage(newPage)
+    if (listRef.current) listRef.current.scrollTop = 0
   }
 
   return (
@@ -389,10 +356,10 @@ export default function EmilyPage() {
           </div>
         </div>
 
-        {/* Count */}
+        {/* Count + page */}
         <div className="px-4 py-2 text-[11px] text-stone-400 border-b border-stone-50 flex justify-between">
           <span>{total > 0 ? total.toLocaleString('sk-SK') + ' emailov' : ''}</span>
-          <span>{emails.length > 0 && emails.length < total ? 'zobrazených ' + emails.length : ''}</span>
+          {totalPages > 1 && <span>str. {page + 1} z {totalPages}</span>}
         </div>
 
         {/* Email list */}
@@ -406,13 +373,24 @@ export default function EmilyPage() {
               return <EmailItem key={email.id} email={email} selected={selected} onClick={selectEmail} />
             })
           )}
-          {loadingMore && (
-            <div className="p-4 text-center text-stone-300 text-[12px] animate-pulse">Načítavam ďalšie…</div>
-          )}
-          {!hasMore && emails.length > 0 && (
-            <div className="p-3 text-center text-stone-200 text-[11px]">— koniec —</div>
-          )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-3 py-2 border-t border-stone-100 flex items-center justify-between bg-stone-50/50">
+            <button
+              onClick={function() { goPage(page - 1) }}
+              disabled={page === 0}
+              className="text-[12px] px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 disabled:opacity-30 hover:bg-stone-50"
+            >← Novšie</button>
+            <span className="text-[11px] text-stone-400">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} z {total.toLocaleString('sk-SK')}</span>
+            <button
+              onClick={function() { goPage(page + 1) }}
+              disabled={page >= totalPages - 1}
+              className="text-[12px] px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 disabled:opacity-30 hover:bg-stone-50"
+            >Staršie →</button>
+          </div>
+        )}
       </div>
 
       {/* RIGHT: Email content — hidden on mobile until email selected */}
