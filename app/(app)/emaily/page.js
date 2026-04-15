@@ -125,9 +125,9 @@ function EmailDetail({ email, attachments }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Email header */}
-      <div className="px-6 py-5 border-b border-stone-100 bg-white sticky top-0 z-10">
-        <h2 className="text-lg font-medium text-stone-900 leading-snug mb-3">{email.subject || '(bez predmetu)'}</h2>
-        <div className="space-y-1.5 text-[13px]">
+      <div className="px-6 py-3 border-b border-stone-100 bg-white sticky top-0 z-10">
+        <h2 className="text-lg font-medium text-stone-900 leading-snug mb-1.5">{email.subject || '(bez predmetu)'}</h2>
+        <div className="space-y-1 text-[13px]">
           <div className="flex gap-2">
             <span className="text-stone-400 w-10 flex-shrink-0">Od:</span>
             <span className="text-stone-700 font-medium">{email.from_name || ''} <span className="text-stone-400 font-normal">&lt;{email.from_email}&gt;</span></span>
@@ -159,7 +159,7 @@ function EmailDetail({ email, attachments }) {
       </div>
 
       {/* Email body */}
-      <div className="px-6 py-5">
+      <div className="px-6 py-3">
         <pre className="text-[13px] text-stone-700 leading-relaxed whitespace-pre-wrap font-[Georgia,serif] max-w-none">{formatBody(email.text_body)}</pre>
       </div>
 
