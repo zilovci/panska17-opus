@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, formatDate, formatDateTime } from '../../components/opus'
 
-var PAGE_SIZE = 200
+var DEFAULT_PAGE_SIZE = 200
+var PAGE_SIZES = [50, 100, 200, 500, 1000]
 
 // ─── Debounce hook ─────────────────────────────────────────
 function useDebounce(value, delay) {
@@ -42,6 +43,8 @@ var FOLDERS = [
   { label: 'BC', value: 'BC' },
   { label: 'P17 kúpa', value: 'P17kupa' },
   { label: 'Služby', value: 'Sluzby' },
+  { label: 'Tatra', value: 'Tatra' },
+  { label: 'EPS', value: 'EPS' },
 ]
 
 // ─── Snippet from email body ───────────────────────────────
@@ -214,6 +217,7 @@ export default function EmilyPage() {
   var [total, setTotal] = useState(0)
   var [loading, setLoading] = useState(true)
   var [page, setPage] = useState(0)
+  var [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   var [selected, setSelected] = useState(null)
   var [selectedFull, setSelectedFull] = useState(null)
   var [attachments, setAttachments] = useState([])
@@ -232,12 +236,12 @@ export default function EmilyPage() {
   var fetchEmails = useCallback(async function() {
     setLoading(true)
     try {
-      var offset = page * PAGE_SIZE
+      var offset = page * pageSize
       var query = supabase
         .from('emails')
         .select('id, date, from_name, from_email, to_addresses, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: 'exact' })
         .order('date', { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1)
+        .range(offset, offset + pageSize - 1)
 
       if (person) {
         query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
@@ -257,7 +261,7 @@ export default function EmilyPage() {
       console.error('Chyba:', err)
     }
     setLoading(false)
-  }, [page, person, folder, dateFrom, dateTo, debouncedSearch])
+  }, [page, pageSize, person, folder, dateFrom, dateTo, debouncedSearch])
 
   useEffect(function() { fetchEmails() }, [fetchEmails])
 
@@ -291,7 +295,7 @@ export default function EmilyPage() {
     }
   }
 
-  var totalPages = Math.ceil(total / PAGE_SIZE)
+  var totalPages = Math.ceil(total / pageSize)
 
   function goPage(newPage) {
     setPage(newPage)
@@ -356,10 +360,21 @@ export default function EmilyPage() {
           </div>
         </div>
 
-        {/* Count + page */}
-        <div className="px-4 py-2 text-[11px] text-stone-400 border-b border-stone-50 flex justify-between">
+        {/* Count + page size + page */}
+        <div className="px-4 py-2 text-[11px] text-stone-400 border-b border-stone-50 flex justify-between items-center">
           <span>{total > 0 ? total.toLocaleString('sk-SK') + ' emailov' : ''}</span>
-          {totalPages > 1 && <span>str. {page + 1} z {totalPages}</span>}
+          <div className="flex items-center gap-2">
+            <select
+              value={pageSize}
+              onChange={function(e) { setPageSize(Number(e.target.value)); setPage(0) }}
+              className="text-[11px] px-1 py-0.5 border border-stone-200 rounded bg-white text-stone-500 focus:outline-none"
+            >
+              {PAGE_SIZES.map(function(s) {
+                return <option key={s} value={s}>{s} / str.</option>
+              })}
+            </select>
+            {totalPages > 1 && <span>str. {page + 1} z {totalPages}</span>}
+          </div>
         </div>
 
         {/* Email list */}
@@ -383,7 +398,7 @@ export default function EmilyPage() {
               disabled={page === 0}
               className="text-[12px] px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 disabled:opacity-30 hover:bg-stone-50"
             >← Novšie</button>
-            <span className="text-[11px] text-stone-400">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} z {total.toLocaleString('sk-SK')}</span>
+            <span className="text-[11px] text-stone-400">{page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} z {total.toLocaleString('sk-SK')}</span>
             <button
               onClick={function() { goPage(page + 1) }}
               disabled={page >= totalPages - 1}
