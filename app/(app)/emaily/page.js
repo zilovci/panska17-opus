@@ -63,7 +63,6 @@ function EmailItem({ email, selected, onClick }) {
   var displayName = ''
   if (email.direction === 'sent' && email.to_addresses && email.to_addresses.length > 0) {
     var firstTo = email.to_addresses[0]
-    // Formáty: "Meno <email>" alebo "email@dom.com" alebo "meno"
     var nameFromAddr = firstTo
     if (firstTo.indexOf('<') > 0) {
       nameFromAddr = firstTo.substring(0, firstTo.indexOf('<')).trim()
@@ -79,7 +78,7 @@ function EmailItem({ email, selected, onClick }) {
   return (
     <button
       onClick={function() { onClick(email) }}
-      className={'w-full text-left px-4 py-3 transition-colors ' + bgClass}
+      className={'w-full text-left px-4 py-2.5 transition-colors ' + bgClass}
       style={{ borderLeft: isSelected ? '3px solid #292524' : '3px solid transparent' }}
     >
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
@@ -88,10 +87,12 @@ function EmailItem({ email, selected, onClick }) {
         </span>
         <span className="text-[11px] text-stone-400 whitespace-nowrap flex-shrink-0">{formatDate(email.date)}</span>
       </div>
-      <div className="text-[13px] text-stone-700 truncate leading-snug">{email.subject || '(bez predmetu)'}</div>
-      {email.attachment_count > 0 && (
-        <div className="text-[10px] text-stone-400 mt-0.5">📎 {email.attachment_count}</div>
-      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[13px] text-stone-700 truncate leading-snug">{email.subject || '(bez predmetu)'}</span>
+        {email.attachment_count > 0 && (
+          <span className="text-[10px] text-stone-400 flex-shrink-0">📎{email.attachment_count}</span>
+        )}
+      </div>
     </button>
   )
 }
@@ -231,6 +232,28 @@ export default function EmilyPage() {
 
   var debouncedSearch = useDebounce(search, 400)
   var listRef = useRef(null)
+  var [leftWidth, setLeftWidth] = useState(400)
+  var dragging = useRef(false)
+
+  // ─── Drag handler pre posúvateľný divider ──────────────
+  useEffect(function() {
+    function onMouseMove(e) {
+      if (!dragging.current) return
+      var newWidth = Math.max(280, Math.min(e.clientX, window.innerWidth - 300))
+      setLeftWidth(newWidth)
+    }
+    function onMouseUp() {
+      dragging.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return function() {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
 
   // ─── Fetch emails ──────────────────────────────────────
   var fetchEmails = useCallback(async function() {
@@ -304,8 +327,11 @@ export default function EmilyPage() {
 
   return (
     <div className="flex gap-0 -mx-4 md:-mx-6 -my-6 md:-my-8" style={{ height: 'calc(100vh - 73px)' }}>
-      {/* LEFT: Email list — full width on mobile, fixed width on desktop */}
-      <div className={'flex-shrink-0 border-r border-stone-200 bg-white flex flex-col ' + (selected ? 'hidden md:flex md:w-[380px] lg:w-[420px]' : 'w-full md:w-[380px] lg:w-[420px]')}>
+      {/* LEFT: Email list — full width on mobile, resizable on desktop */}
+      <div
+        className={'email-list-panel flex-shrink-0 border-r border-stone-200 bg-white flex flex-col ' + (selected ? 'hidden md:flex' : 'w-full md:flex')}
+        style={{ width: leftWidth + 'px', minWidth: leftWidth + 'px' }}
+      >
         {/* Search + filters */}
         <div className="p-3 border-b border-stone-100 space-y-2">
           <input
@@ -406,6 +432,15 @@ export default function EmilyPage() {
             >Staršie →</button>
           </div>
         )}
+      </div>
+
+      {/* DRAG HANDLE — posúvanie šírky panelov */}
+      <div
+        onMouseDown={function() { dragging.current = true; document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none' }}
+        className="hidden md:flex w-1.5 cursor-col-resize bg-stone-100 hover:bg-stone-300 active:bg-stone-400 transition-colors flex-shrink-0 items-center justify-center"
+        title="Potiahni pre zmenu veľkosti"
+      >
+        <div className="w-0.5 h-8 bg-stone-300 rounded-full"></div>
       </div>
 
       {/* RIGHT: Email content — hidden on mobile until email selected */}
