@@ -68,9 +68,8 @@ function EmailItem({ email, selected, onClick }) {
         <span className="text-[11px] text-stone-400 whitespace-nowrap flex-shrink-0">{formatDate(email.date)}</span>
       </div>
       <div className="text-[13px] text-stone-700 truncate leading-snug">{email.subject || '(bez predmetu)'}</div>
-      <div className="text-[11px] text-stone-400 truncate mt-0.5 leading-snug">{snippet(email.text_body, 100)}</div>
       {email.attachment_count > 0 && (
-        <div className="text-[10px] text-stone-400 mt-1">📎 {email.attachment_count}</div>
+        <div className="text-[10px] text-stone-400 mt-0.5">📎 {email.attachment_count}</div>
       )}
     </button>
   )
@@ -196,8 +195,10 @@ export default function EmilyPage() {
   var [emails, setEmails] = useState([])
   var [total, setTotal] = useState(0)
   var [loading, setLoading] = useState(true)
-  var [page, setPage] = useState(0)
+  var [loadingMore, setLoadingMore] = useState(false)
+  var [hasMore, setHasMore] = useState(true)
   var [selected, setSelected] = useState(null)
+  var [selectedFull, setSelectedFull] = useState(null)
   var [attachments, setAttachments] = useState([])
 
   // Filters
@@ -209,75 +210,108 @@ export default function EmilyPage() {
 
   var debouncedSearch = useDebounce(search, 400)
   var listRef = useRef(null)
+  var offsetRef = useRef(0)
 
-  // ─── Fetch emails ──────────────────────────────────────
-  var fetchEmails = useCallback(async function() {
+  // ─── Build query with filters ──────────────────────────
+  function buildQuery(offset, limit) {
+    var query = supabase
+      .from('emails')
+      .select('id, date, from_name, from_email, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: offset === 0 ? 'exact' : undefined })
+      .order('date', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (person) {
+      query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
+    }
+    if (folder) query = query.eq('source_file', folder)
+    if (dateFrom) query = query.gte('date', dateFrom + 'T00:00:00')
+    if (dateTo) query = query.lte('date', dateTo + 'T23:59:59')
+    if (debouncedSearch) {
+      query = query.or('subject.ilike.%' + debouncedSearch + '%,text_body.ilike.%' + debouncedSearch + '%,from_name.ilike.%' + debouncedSearch + '%')
+    }
+    return query
+  }
+
+  // ─── Initial load ──────────────────────────────────────
+  var loadInitial = useCallback(async function() {
     setLoading(true)
+    offsetRef.current = 0
     try {
-      var query = supabase
-        .from('emails')
-        .select('id, date, from_name, from_email, to_addresses, cc_addresses, subject, text_body, direction, source_file, attachment_count, has_attachments, forwarded_from_name, forwarded_from_email', { count: 'exact' })
-        .order('date', { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-
-      // Person filter — search in from, to, forwarded
-      if (person) {
-        query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
-      }
-
-      // Folder filter
-      if (folder) {
-        query = query.eq('source_file', folder)
-      }
-
-      // Date filters
-      if (dateFrom) {
-        query = query.gte('date', dateFrom + 'T00:00:00')
-      }
-      if (dateTo) {
-        query = query.lte('date', dateTo + 'T23:59:59')
-      }
-
-      // Text search
-      if (debouncedSearch) {
-        // Use ilike for simple search
-        query = query.or('subject.ilike.%' + debouncedSearch + '%,text_body.ilike.%' + debouncedSearch + '%,from_name.ilike.%' + debouncedSearch + '%')
-      }
-
-      var { data, error, count } = await query
+      var { data, error, count } = await buildQuery(0, PAGE_SIZE)
       if (error) throw error
       setEmails(data || [])
       setTotal(count || 0)
+      setHasMore((data || []).length === PAGE_SIZE)
+      offsetRef.current = (data || []).length
     } catch (err) {
-      console.error('Chyba pri načítaní emailov:', err)
+      console.error('Chyba:', err)
     }
     setLoading(false)
-  }, [page, person, folder, dateFrom, dateTo, debouncedSearch])
-
-  useEffect(function() {
-    fetchEmails()
-  }, [fetchEmails])
-
-  // Reset page when filters change
-  useEffect(function() {
-    setPage(0)
   }, [person, folder, dateFrom, dateTo, debouncedSearch])
 
-  // ─── Select email and load attachments ─────────────────
+  // ─── Load more (infinite scroll) ───────────────────────
+  async function loadMore() {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      var { data, error } = await buildQuery(offsetRef.current, PAGE_SIZE)
+      if (error) throw error
+      if (data && data.length > 0) {
+        setEmails(function(prev) { return prev.concat(data) })
+        offsetRef.current += data.length
+        setHasMore(data.length === PAGE_SIZE)
+      } else {
+        setHasMore(false)
+      }
+    } catch (err) {
+      console.error('Chyba:', err)
+    }
+    setLoadingMore(false)
+  }
+
+  useEffect(function() { loadInitial() }, [loadInitial])
+
+  // Reset on filter change
+  useEffect(function() {
+    setSelected(null)
+    setSelectedFull(null)
+    setAttachments([])
+  }, [person, folder, dateFrom, dateTo, debouncedSearch])
+
+  // ─── Scroll listener for infinite scroll ───────────────
+  useEffect(function() {
+    var el = listRef.current
+    if (!el) return
+    function onScroll() {
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+        loadMore()
+      }
+    }
+    el.addEventListener('scroll', onScroll)
+    return function() { el.removeEventListener('scroll', onScroll) }
+  })
+
+  // ─── Select email — load full content ──────────────────
   async function selectEmail(email) {
     setSelected(email)
     setAttachments([])
+    // Load full email with text_body
+    var { data: fullEmail } = await supabase
+      .from('emails')
+      .select('*')
+      .eq('id', email.id)
+      .single()
+    setSelectedFull(fullEmail)
+    // Load attachments
     if (email.has_attachments) {
-      var { data } = await supabase
+      var { data: atts } = await supabase
         .from('email_attachments')
         .select('id, filename, content_type, size_bytes, extracted_text, text_length')
         .eq('email_id', email.id)
         .order('filename')
-      setAttachments(data || [])
+      setAttachments(atts || [])
     }
   }
-
-  var totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <div className="flex gap-0 -mx-4 md:-mx-6 -my-6 md:-my-8" style={{ height: 'calc(100vh - 73px)' }}>
@@ -339,8 +373,8 @@ export default function EmilyPage() {
 
         {/* Count */}
         <div className="px-4 py-2 text-[11px] text-stone-400 border-b border-stone-50 flex justify-between">
-          <span>{total.toLocaleString('sk-SK')} emailov</span>
-          {totalPages > 1 && <span>str. {page + 1} z {totalPages}</span>}
+          <span>{total > 0 ? total.toLocaleString('sk-SK') + ' emailov' : ''}</span>
+          <span>{emails.length > 0 && emails.length < total ? 'zobrazených ' + emails.length : ''}</span>
         </div>
 
         {/* Email list */}
@@ -354,23 +388,13 @@ export default function EmilyPage() {
               return <EmailItem key={email.id} email={email} selected={selected} onClick={selectEmail} />
             })
           )}
+          {loadingMore && (
+            <div className="p-4 text-center text-stone-300 text-[12px] animate-pulse">Načítavam ďalšie…</div>
+          )}
+          {!hasMore && emails.length > 0 && (
+            <div className="p-3 text-center text-stone-200 text-[11px]">— koniec —</div>
+          )}
         </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-3 py-2 border-t border-stone-100 flex items-center justify-between bg-stone-50/50">
-            <button
-              onClick={function() { setPage(Math.max(0, page - 1)); if (listRef.current) listRef.current.scrollTop = 0 }}
-              disabled={page === 0}
-              className="text-[12px] px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 disabled:opacity-30 hover:bg-stone-50"
-            >← Novšie</button>
-            <button
-              onClick={function() { setPage(Math.min(totalPages - 1, page + 1)); if (listRef.current) listRef.current.scrollTop = 0 }}
-              disabled={page >= totalPages - 1}
-              className="text-[12px] px-3 py-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 disabled:opacity-30 hover:bg-stone-50"
-            >Staršie →</button>
-          </div>
-        )}
       </div>
 
       {/* RIGHT: Email content — hidden on mobile until email selected */}
@@ -378,13 +402,13 @@ export default function EmilyPage() {
         {/* Mobile back button */}
         {selected && (
           <button
-            onClick={function() { setSelected(null); setAttachments([]) }}
+            onClick={function() { setSelected(null); setSelectedFull(null); setAttachments([]) }}
             className="md:hidden flex items-center gap-1.5 px-4 py-2.5 text-[13px] text-stone-500 border-b border-stone-100 bg-stone-50 hover:bg-stone-100"
           >
             ← Späť na zoznam
           </button>
         )}
-        <EmailDetail email={selected} attachments={attachments} />
+        <EmailDetail email={selectedFull || selected} attachments={attachments} />
       </div>
     </div>
   )
