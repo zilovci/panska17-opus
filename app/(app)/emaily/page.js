@@ -229,6 +229,7 @@ export default function EmilyPage() {
   var [folder, setFolder] = useState('')
   var [dateFrom, setDateFrom] = useState('')
   var [dateTo, setDateTo] = useState('')
+  var [showFilters, setShowFilters] = useState(false)
 
   var debouncedSearch = useDebounce(search, 400)
   var listRef = useRef(null)
@@ -334,56 +335,67 @@ export default function EmilyPage() {
       >
         {/* Search + filters */}
         <div className="p-3 border-b border-stone-100 space-y-2">
-          <input
-            type="text"
-            placeholder="Hľadať v emailoch..."
-            value={search}
-            onChange={function(e) { setSearch(e.target.value) }}
-            className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-stone-400 bg-stone-50"
-          />
-          <div className="flex gap-1.5">
-            <select
-              value={person}
-              onChange={function(e) { setPerson(e.target.value) }}
-              className="flex-1 text-[12px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none"
-            >
-              {PEOPLE.map(function(p) {
-                return <option key={p.value} value={p.value}>{p.label}</option>
-              })}
-            </select>
-            <select
-              value={folder}
-              onChange={function(e) { setFolder(e.target.value) }}
-              className="flex-1 text-[12px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none"
-            >
-              {FOLDERS.map(function(f) {
-                return <option key={f.value} value={f.value}>{f.label}</option>
-              })}
-            </select>
-          </div>
           <div className="flex gap-1.5">
             <input
-              type="date"
-              value={dateFrom}
-              onChange={function(e) { setDateFrom(e.target.value) }}
-              className="flex-1 text-[11px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-500 focus:outline-none"
-              placeholder="Od"
+              type="text"
+              placeholder="Hľadať v emailoch..."
+              value={search}
+              onChange={function(e) { setSearch(e.target.value) }}
+              className="flex-1 px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-stone-400 bg-stone-50"
             />
-            <input
-              type="date"
-              value={dateTo}
-              onChange={function(e) { setDateTo(e.target.value) }}
-              className="flex-1 text-[11px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-500 focus:outline-none"
-              placeholder="Do"
-            />
-            {(dateFrom || dateTo || person || folder || search) && (
-              <button
-                onClick={function() { setSearch(''); setPerson(''); setFolder(''); setDateFrom(''); setDateTo('') }}
-                className="text-[11px] px-2 py-1.5 text-stone-400 hover:text-stone-600"
-                title="Vyčistiť filtre"
-              >✕</button>
-            )}
+            <button
+              onClick={function() { setShowFilters(!showFilters) }}
+              className={'px-2.5 py-2 text-sm border rounded-lg transition-colors ' + (showFilters || person || folder || dateFrom || dateTo ? 'border-stone-400 bg-stone-100 text-stone-700' : 'border-stone-200 bg-white text-stone-400 hover:text-stone-600')}
+              title="Filtre"
+            >⚙</button>
           </div>
+          {showFilters && (
+            <>
+              <div className="flex gap-1.5">
+                <select
+                  value={person}
+                  onChange={function(e) { setPerson(e.target.value) }}
+                  className="flex-1 text-[12px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none"
+                >
+                  {PEOPLE.map(function(p) {
+                    return <option key={p.value} value={p.value}>{p.label}</option>
+                  })}
+                </select>
+                <select
+                  value={folder}
+                  onChange={function(e) { setFolder(e.target.value) }}
+                  className="flex-1 text-[12px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-600 focus:outline-none"
+                >
+                  {FOLDERS.map(function(f) {
+                    return <option key={f.value} value={f.value}>{f.label}</option>
+                  })}
+                </select>
+              </div>
+              <div className="flex gap-1.5">
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={function(e) { setDateFrom(e.target.value) }}
+                  className="flex-1 text-[11px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-500 focus:outline-none"
+                  placeholder="Od"
+                />
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={function(e) { setDateTo(e.target.value) }}
+                  className="flex-1 text-[11px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-500 focus:outline-none"
+                  placeholder="Do"
+                />
+                {(dateFrom || dateTo || person || folder || search) && (
+                  <button
+                    onClick={function() { setSearch(''); setPerson(''); setFolder(''); setDateFrom(''); setDateTo('') }}
+                    className="text-[11px] px-2 py-1.5 text-stone-400 hover:text-stone-600"
+                    title="Vyčistiť filtre"
+                  >✕</button>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Count + page size + page */}
