@@ -281,8 +281,8 @@ export default function EmilyPage() {
 
   return (
     <div className="flex gap-0 -mx-4 md:-mx-6 -my-6 md:-my-8" style={{ height: 'calc(100vh - 73px)' }}>
-      {/* LEFT: Email list */}
-      <div className="w-[380px] lg:w-[420px] flex-shrink-0 border-r border-stone-200 bg-white flex flex-col">
+      {/* LEFT: Email list — full width on mobile, fixed width on desktop */}
+      <div className={'flex-shrink-0 border-r border-stone-200 bg-white flex flex-col ' + (selected ? 'hidden md:flex md:w-[380px] lg:w-[420px]' : 'w-full md:w-[380px] lg:w-[420px]')}>
         {/* Search + filters */}
         <div className="p-3 border-b border-stone-100 space-y-2">
           <input
@@ -373,8 +373,17 @@ export default function EmilyPage() {
         )}
       </div>
 
-      {/* RIGHT: Email content */}
-      <div className="flex-1 bg-white flex flex-col overflow-hidden">
+      {/* RIGHT: Email content — hidden on mobile until email selected */}
+      <div className={'flex-1 bg-white flex flex-col overflow-hidden ' + (selected ? 'flex' : 'hidden md:flex')}>
+        {/* Mobile back button */}
+        {selected && (
+          <button
+            onClick={function() { setSelected(null); setAttachments([]) }}
+            className="md:hidden flex items-center gap-1.5 px-4 py-2.5 text-[13px] text-stone-500 border-b border-stone-100 bg-stone-50 hover:bg-stone-100"
+          >
+            ← Späť na zoznam
+          </button>
+        )}
         <EmailDetail email={selected} attachments={attachments} />
       </div>
     </div>
