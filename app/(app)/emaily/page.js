@@ -160,7 +160,7 @@ function EmailDetail({ email, attachments }) {
 
       {/* Email body */}
       <div className="px-6 py-3">
-        <pre className="text-[13px] text-stone-700 leading-relaxed whitespace-pre-wrap font-[Georgia,serif] max-w-none">{formatBody(email.raw_text_body || email.text_body)}</pre>
+        <pre className="text-[13px] text-stone-700 leading-relaxed whitespace-pre-wrap font-[Georgia,serif] max-w-none">{formatBody(email.text_body)}</pre>
       </div>
 
       {/* Attachments */}
