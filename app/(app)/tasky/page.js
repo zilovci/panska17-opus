@@ -37,6 +37,14 @@ export default function TaskyPage() {
   var [selectedTask, setSelectedTask] = useState(null)
   var [showDone, setShowDone] = useState(false)
   var [typeFilter, setTypeFilter] = useState('all')
+  var [undoToast, setUndoToast] = useState(null) // { task: {...}, timeoutId }
+
+  // Auto-dismiss toast po 8 sekundách
+  useEffect(function() {
+    if (!undoToast) return
+    var tid = setTimeout(function() { setUndoToast(null) }, 8000)
+    return function() { clearTimeout(tid) }
+  }, [undoToast])
 
   var loadData = useCallback(async function() {
     var [tasksR, kR, koR, tcR, csR, ciR] = await Promise.all([
@@ -72,6 +80,27 @@ export default function TaskyPage() {
     loadData()
     if (selectedTask && selectedTask.id === task.id) {
       setSelectedTask(Object.assign({}, task, { status: ns }))
+    }
+    // Undo toast + auto-expand Hotové keď označíme úlohu hotovou
+    if (ns === 'done') {
+      setUndoToast({ task: task, previousStatus: task.status })
+      setShowDone(true)
+    } else {
+      setUndoToast(null)
+    }
+  }
+
+  async function undoDone() {
+    if (!undoToast) return
+    var t = undoToast.task
+    await supabase.from('tasks').update({
+      status: undoToast.previousStatus || 'open',
+      completed_at: null,
+    }).eq('id', t.id)
+    setUndoToast(null)
+    loadData()
+    if (selectedTask && selectedTask.id === t.id) {
+      setSelectedTask(Object.assign({}, t, { status: undoToast.previousStatus || 'open' }))
     }
   }
 
@@ -164,7 +193,10 @@ export default function TaskyPage() {
         )}
 
         <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
-          className={'mt-1 w-4 h-4 rounded border flex-shrink-0 ' + (isSelected ? 'border-stone-500 hover:border-white' : 'border-stone-300 hover:border-stone-500')} />
+          className={'mt-1 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors group/cb ' + (isSelected ? 'border-stone-500 hover:border-white hover:bg-white/10' : 'border-stone-300 hover:border-emerald-500 hover:bg-emerald-50')}
+          title="Označiť ako hotové">
+          <span className={'text-[9px] leading-none opacity-0 group-hover/cb:opacity-100 transition-opacity ' + (isSelected ? 'text-white' : 'text-emerald-500')}>✓</span>
+        </button>
 
         <div className="flex-1 min-w-0">
           <div className={'text-sm leading-snug ' + (isSelected ? 'text-white' : 'text-stone-700')}>
@@ -471,6 +503,24 @@ export default function TaskyPage() {
           })()}
         </div>
       </div>
+
+      {/* UNDO TOAST */}
+      {undoToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-stone-800 text-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 min-w-[320px] max-w-[500px]">
+          <span className="text-emerald-400 text-sm">✓</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-stone-300">Označené hotové</div>
+            <div className="text-sm truncate">{undoToast.task.title}</div>
+          </div>
+          <button onClick={undoDone}
+            className="text-sm font-medium text-amber-300 hover:text-amber-100 px-3 py-1 rounded-lg hover:bg-white/10 transition-colors">
+            Späť
+          </button>
+          <button onClick={function() { setUndoToast(null) }}
+            className="text-stone-400 hover:text-white px-1 text-lg leading-none"
+            title="Zavrieť">×</button>
+        </div>
+      )}
     </div>
   )
 }
