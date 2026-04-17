@@ -179,25 +179,9 @@ export default function TaskyPage() {
 
     return (
       <div key={t.id} onClick={function() { setSelectedTask(t) }}
-        className={'group flex items-start gap-2 py-2.5 px-3 rounded-xl cursor-pointer transition-colors ' + overdueClass + (isSelected ? 'bg-stone-800 text-white' : 'hover:bg-white')}>
+        className={'group flex items-stretch gap-3 py-2.5 px-3 rounded-xl cursor-pointer transition-colors ' + overdueClass + (isSelected ? 'bg-stone-800 text-white' : 'hover:bg-white')}>
 
-        {opts.pinned && (
-          <div className="flex flex-col gap-0.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={function(e) { e.stopPropagation(); moveManual(t, 'up') }}
-              className={'text-[10px] leading-none ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
-              title="Presuň vyššie">▲</button>
-            <button onClick={function(e) { e.stopPropagation(); moveManual(t, 'down') }}
-              className={'text-[10px] leading-none ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
-              title="Presuň nižšie">▼</button>
-          </div>
-        )}
-
-        <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
-          className={'mt-1 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors group/cb ' + (isSelected ? 'border-stone-500 hover:border-white hover:bg-white/10' : 'border-stone-300 hover:border-emerald-500 hover:bg-emerald-50')}
-          title="Označiť ako hotové">
-          <span className={'text-[9px] leading-none opacity-0 group-hover/cb:opacity-100 transition-opacity ' + (isSelected ? 'text-white' : 'text-emerald-500')}>✓</span>
-        </button>
-
+        {/* MAIN CONTENT */}
         <div className="flex-1 min-w-0">
           <div className={'text-sm leading-snug ' + (isSelected ? 'text-white' : 'text-stone-700')}>
             <span className={'text-[10px] mr-1.5 ' + (isSelected ? 'text-stone-300' : 'text-stone-300')}>#{t.id}</span>
@@ -212,7 +196,7 @@ export default function TaskyPage() {
             {ko && <span className={'text-[10px] px-1.5 py-0.5 rounded ' + (isSelected ? 'bg-white/10 text-stone-200' : 'bg-stone-100 text-stone-500')}>{ko.code}</span>}
             {t.due_date && <span className={'text-[10px] ' + (isSelected ? 'text-stone-300' : isOverdue(t.due_date) ? 'text-red-500 font-medium' : isSoon(t.due_date) ? 'text-amber-500 font-medium' : 'text-stone-400')}>{formatDate(t.due_date)}</span>}
             {(cc > 0 || sCount > 0) && (
-              <span className="flex items-center gap-1 ml-auto">
+              <span className="flex items-center gap-1">
                 {cc > 0 && (
                   <span className={'text-[9px] px-1.5 py-0.5 rounded-full font-medium ' + (isSelected ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-500')} title={cc + ' kontextových záznamov'}>◆ {cc}</span>
                 )}
@@ -224,11 +208,35 @@ export default function TaskyPage() {
           </div>
         </div>
 
-        <button onClick={function(e) { e.stopPropagation(); opts.pinned ? unpin(t) : pinToTop(t) }}
-          className={'text-xs flex-shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
-          title={opts.pinned ? 'Odopnúť' : 'Presunúť na vrch'}>
-          {opts.pinned ? '⚲' : '⚯'}
-        </button>
+        {/* RIGHT-BOTTOM ACTIONS — visible on hover */}
+        <div className="flex flex-col items-end justify-end gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Top row — manual arrows for pinned */}
+          {opts.pinned && (
+            <div className="flex gap-1">
+              <button onClick={function(e) { e.stopPropagation(); moveManual(t, 'up') }}
+                className={'text-[11px] leading-none px-1 ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
+                title="Presuň vyššie">▲</button>
+              <button onClick={function(e) { e.stopPropagation(); moveManual(t, 'down') }}
+                className={'text-[11px] leading-none px-1 ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
+                title="Presuň nižšie">▼</button>
+            </div>
+          )}
+
+          {/* Bottom row — pin + complete (right-bottom corner) */}
+          <div className="flex items-center gap-2">
+            <button onClick={function(e) { e.stopPropagation(); opts.pinned ? unpin(t) : pinToTop(t) }}
+              className={'text-xs ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
+              title={opts.pinned ? 'Odopnúť' : 'Pripnúť na vrch'}>
+              {opts.pinned ? '⚲' : '⚯'}
+            </button>
+            <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
+              className={'text-[11px] px-2 py-1 rounded-md border flex items-center gap-1 font-medium transition-colors ' + (isSelected ? 'border-stone-500 text-stone-200 hover:bg-white/10 hover:text-white' : 'border-emerald-200 text-emerald-600 bg-white hover:bg-emerald-50 hover:border-emerald-400')}
+              title="Označiť ako hotové">
+              <span className="leading-none">✓</span>
+              <span className="leading-none">Hotovo</span>
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -308,14 +316,19 @@ export default function TaskyPage() {
                 var isSelected = selectedTask && selectedTask.id === t.id
                 return (
                   <div key={t.id} onClick={function() { setSelectedTask(t) }}
-                    className={'flex items-start gap-3 py-2 px-3 rounded-xl cursor-pointer opacity-50 hover:opacity-70 ' + (isSelected ? 'bg-stone-200' : '')}>
-                    <div className="mt-0.5 w-4 h-4 rounded border bg-stone-300 border-stone-300 flex-shrink-0 flex items-center justify-center">
-                      <span className="text-[10px] text-white">✓</span>
+                    className={'group/done flex items-center gap-3 py-2 px-3 rounded-xl cursor-pointer hover:bg-white ' + (isSelected ? 'bg-stone-200' : '')}>
+                    <div className="w-4 h-4 rounded border bg-emerald-400 border-emerald-400 flex-shrink-0 flex items-center justify-center">
+                      <span className="text-[10px] text-white leading-none">✓</span>
                     </div>
-                    <div className="text-sm line-through text-stone-400">
+                    <div className="flex-1 text-sm line-through text-stone-400 min-w-0 truncate">
                       <span className="text-[10px] mr-1.5 text-stone-300">#{t.id}</span>
                       {t.title}
                     </div>
+                    <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
+                      className="text-[11px] px-2 py-1 rounded-md border border-amber-200 text-amber-600 bg-white hover:bg-amber-50 hover:border-amber-400 font-medium opacity-0 group-hover/done:opacity-100 transition-opacity flex-shrink-0"
+                      title="Vrátiť medzi aktívne">
+                      ↺ Vrátiť
+                    </button>
                   </div>
                 )
               })}
