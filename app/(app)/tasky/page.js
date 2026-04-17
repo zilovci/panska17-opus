@@ -208,34 +208,30 @@ export default function TaskyPage() {
           </div>
         </div>
 
-        {/* RIGHT-BOTTOM ACTIONS — visible on hover */}
-        <div className="flex flex-col items-end justify-end gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Top row — manual arrows for pinned */}
+        {/* RIGHT-SIDE ACTIONS — vertical stack, visible on hover. Pin top, checkmark bottom. */}
+        <div className="flex flex-col items-center justify-between gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={function(e) { e.stopPropagation(); opts.pinned ? unpin(t) : pinToTop(t) }}
+            className={'text-sm leading-none ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
+            title={opts.pinned ? 'Odopnúť' : 'Pripnúť na vrch'}>
+            {opts.pinned ? '⚲' : '⚯'}
+          </button>
+
           {opts.pinned && (
-            <div className="flex gap-1">
+            <div className="flex flex-col gap-0">
               <button onClick={function(e) { e.stopPropagation(); moveManual(t, 'up') }}
-                className={'text-[11px] leading-none px-1 ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
+                className={'text-[10px] leading-none ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
                 title="Presuň vyššie">▲</button>
               <button onClick={function(e) { e.stopPropagation(); moveManual(t, 'down') }}
-                className={'text-[11px] leading-none px-1 ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
+                className={'text-[10px] leading-none ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
                 title="Presuň nižšie">▼</button>
             </div>
           )}
 
-          {/* Bottom row — pin + complete (right-bottom corner) */}
-          <div className="flex items-center gap-2">
-            <button onClick={function(e) { e.stopPropagation(); opts.pinned ? unpin(t) : pinToTop(t) }}
-              className={'text-xs ' + (isSelected ? 'text-stone-300 hover:text-white' : 'text-stone-400 hover:text-stone-700')}
-              title={opts.pinned ? 'Odopnúť' : 'Pripnúť na vrch'}>
-              {opts.pinned ? '⚲' : '⚯'}
-            </button>
-            <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
-              className={'text-[11px] px-2 py-1 rounded-md border flex items-center gap-1 font-medium transition-colors ' + (isSelected ? 'border-stone-500 text-stone-200 hover:bg-white/10 hover:text-white' : 'border-emerald-200 text-emerald-600 bg-white hover:bg-emerald-50 hover:border-emerald-400')}
-              title="Označiť ako hotové">
-              <span className="leading-none">✓</span>
-              <span className="leading-none">Hotovo</span>
-            </button>
-          </div>
+          <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
+            className={'w-5 h-5 rounded border flex items-center justify-center text-xs leading-none transition-colors ' + (isSelected ? 'border-stone-500 text-stone-200 hover:bg-white/10 hover:text-white' : 'border-emerald-300 text-emerald-500 bg-white hover:bg-emerald-50 hover:border-emerald-500')}
+            title="Označiť ako hotové">
+            ✓
+          </button>
         </div>
       </div>
     )
@@ -325,9 +321,9 @@ export default function TaskyPage() {
                       {t.title}
                     </div>
                     <button onClick={function(e) { e.stopPropagation(); toggleTask(t) }}
-                      className="text-[11px] px-2 py-1 rounded-md border border-amber-200 text-amber-600 bg-white hover:bg-amber-50 hover:border-amber-400 font-medium opacity-0 group-hover/done:opacity-100 transition-opacity flex-shrink-0"
+                      className="w-5 h-5 rounded border border-amber-300 text-amber-600 bg-white hover:bg-amber-50 hover:border-amber-500 flex items-center justify-center text-xs leading-none opacity-0 group-hover/done:opacity-100 transition-opacity flex-shrink-0"
                       title="Vrátiť medzi aktívne">
-                      ↺ Vrátiť
+                      ↺
                     </button>
                   </div>
                 )
