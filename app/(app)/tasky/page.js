@@ -256,7 +256,7 @@ export default function TaskyPage() {
           </button>
           <button onClick={function() { setTypeFilter('manual') }}
             className={'text-xs px-3 py-1.5 rounded-md transition-colors ' + (typeFilter === 'manual' ? 'bg-white text-stone-800 font-medium' : 'text-stone-500 hover:text-stone-700')}>
-            Kauza
+            Kauzy
           </button>
           <button onClick={function() { setTypeFilter('opus_dev') }}
             className={'text-xs px-3 py-1.5 rounded-md transition-colors ' + (typeFilter === 'opus_dev' ? 'bg-white text-stone-800 font-medium' : 'text-stone-500 hover:text-stone-700')}>
