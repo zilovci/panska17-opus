@@ -22,12 +22,15 @@ var SESSION_ITEM_CONFIG = {
 
 // Pseudo-emaily — typ udalosti (mimo SMTP)
 var EVENT_TYPE_CONFIG = {
-  letter_sent:       { label: 'Poštou',          bg: 'bg-stone-200',   text: 'text-stone-700' },
-  letter_received:   { label: 'Prijaté poštou',  bg: 'bg-stone-200',   text: 'text-stone-700' },
-  submission:        { label: 'Podanie',         bg: 'bg-blue-100',    text: 'text-blue-700' },
-  delivery:          { label: 'Doručené úradne', bg: 'bg-violet-100',  text: 'text-violet-700' },
-  filing_additional: { label: 'Do spisu',        bg: 'bg-orange-100',  text: 'text-orange-700' },
-  delivery_receipt:  { label: 'Doručenka',       bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  letter_sent:         { label: 'Poštou',             bg: 'bg-stone-200',   text: 'text-stone-700' },
+  letter_received:     { label: 'Prijaté poštou',     bg: 'bg-stone-200',   text: 'text-stone-700' },
+  submission:          { label: 'Podanie',            bg: 'bg-blue-100',    text: 'text-blue-700' },
+  delivery:            { label: 'Doručené úradne',    bg: 'bg-violet-100',  text: 'text-violet-700' },
+  filing_additional:   { label: 'Do spisu',           bg: 'bg-orange-100',  text: 'text-orange-700' },
+  delivery_receipt:    { label: 'Doručenka',          bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  filing_initial:      { label: 'Podanie protistrany', bg: 'bg-red-100',    text: 'text-red-700' },
+  inspection_official: { label: 'Úradná obhliadka',   bg: 'bg-violet-100',  text: 'text-violet-700' },
+  inspection_file:     { label: 'Nahliadnutie spis',  bg: 'bg-cyan-100',    text: 'text-cyan-700' },
 }
 
 // Vzťah emailu/udalosti k úlohe
@@ -437,7 +440,7 @@ export default function TaskyPage() {
                                 <span className={'text-[10px] font-medium px-1.5 py-0.5 rounded ' + evtCfg.bg + ' ' + evtCfg.text}>{evtCfg.label}</span>
                               )}
                               {em.is_pseudo && !evtCfg && (
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">Mimo SMTP</span>
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">Udalosť</span>
                               )}
                               {em.delivered_via && (
                                 <span className="text-[9px] uppercase tracking-wider text-stone-400">{em.delivered_via}</span>
