@@ -20,6 +20,27 @@ var SESSION_ITEM_CONFIG = {
   reference:     { label: 'Odkaz', bg: 'bg-stone-50', text: 'text-stone-600' },
 }
 
+// Pseudo-emaily — typ udalosti (mimo SMTP)
+var EVENT_TYPE_CONFIG = {
+  letter_sent:       { label: 'Poštou',          bg: 'bg-stone-200',   text: 'text-stone-700' },
+  letter_received:   { label: 'Prijaté poštou',  bg: 'bg-stone-200',   text: 'text-stone-700' },
+  submission:        { label: 'Podanie',         bg: 'bg-blue-100',    text: 'text-blue-700' },
+  delivery:          { label: 'Doručené úradne', bg: 'bg-violet-100',  text: 'text-violet-700' },
+  filing_additional: { label: 'Do spisu',        bg: 'bg-orange-100',  text: 'text-orange-700' },
+  delivery_receipt:  { label: 'Doručenka',       bg: 'bg-emerald-100', text: 'text-emerald-700' },
+}
+
+// Vzťah emailu/udalosti k úlohe
+var RELATION_TYPE_CONFIG = {
+  target:     { label: 'Cieľ',     bg: 'bg-red-100',     text: 'text-red-700' },
+  evidence:   { label: 'Dôkaz',    bg: 'bg-emerald-100', text: 'text-emerald-700' },
+  response:   { label: 'Odpoveď',  bg: 'bg-blue-100',    text: 'text-blue-700' },
+  background: { label: 'Pozadie',  bg: 'bg-stone-100',   text: 'text-stone-600' },
+  submission: { label: 'Podanie',  bg: 'bg-blue-100',    text: 'text-blue-700' },
+  filing:     { label: 'Spis',     bg: 'bg-orange-100',  text: 'text-orange-700' },
+  outcome:    { label: 'Výsledok', bg: 'bg-violet-100',  text: 'text-violet-700' },
+}
+
 var PRIO_RANK = { urgent: 1, high: 2, medium: 3, normal: 4, low: 5 }
 function priorityRank(p) { return PRIO_RANK[p] || 9 }
 
@@ -31,6 +52,7 @@ export default function TaskyPage() {
   var [kauzy, setKauzy] = useState([])
   var [konania, setKonania] = useState([])
   var [taskContexts, setTaskContexts] = useState([])
+  var [taskEmails, setTaskEmails] = useState([])
   var [sessions, setSessions] = useState([])
   var [sessionItems, setSessionItems] = useState([])
   var [loading, setLoading] = useState(true)
@@ -47,11 +69,12 @@ export default function TaskyPage() {
   }, [undoToast])
 
   var loadData = useCallback(async function() {
-    var [tasksR, kR, koR, tcR, csR, ciR] = await Promise.all([
+    var [tasksR, kR, koR, tcR, teR, csR, ciR] = await Promise.all([
       supabase.from('tasks').select('*'),
       supabase.from('kauzy').select('id, code, name'),
       supabase.from('konania').select('id, code, name, case_number'),
       supabase.from('task_context').select('*').order('created_at', { ascending: false }),
+      supabase.from('task_emails').select('*, emails(id, message_id, date, from_name, from_email, to_addresses, subject, text_body, event_type, delivered_via, related_document_ids, recipients_note, is_pseudo)').order('sort_order', { ascending: true }),
       supabase.from('chat_sessions').select('*').order('started_at', { ascending: false }),
       supabase.from('chat_session_items').select('*').order('sort_order', { ascending: true }),
     ])
@@ -59,6 +82,7 @@ export default function TaskyPage() {
     setKauzy(kR.data || [])
     setKonania(koR.data || [])
     setTaskContexts(tcR.data || [])
+    setTaskEmails(teR.data || [])
     setSessions(csR.data || [])
     setSessionItems(ciR.data || [])
     setLoading(false)
@@ -161,6 +185,7 @@ export default function TaskyPage() {
     })
 
   function getContextsForTask(taskId) { return taskContexts.filter(function(tc) { return tc.task_id === taskId }) }
+  function getEmailsForTask(taskId) { return taskEmails.filter(function(te) { return te.task_id === taskId }) }
   function getSessionsForTask(taskId) { return sessions.filter(function(s) { return s.task_id === taskId }) }
   function getItemsForSession(sessionId) { return sessionItems.filter(function(i) { return i.session_id === sessionId }) }
   function getKauza(id) { return id ? kauzy.find(function(k) { return k.id === id }) : null }
@@ -171,6 +196,7 @@ export default function TaskyPage() {
     var st = sc(t.priority)
     var isSelected = selectedTask && selectedTask.id === t.id
     var cc = getContextsForTask(t.id).length
+    var ec = getEmailsForTask(t.id).length
     var sCount = getSessionsForTask(t.id).length
     var k = getKauza(t.kauza_id)
     var ko = getKonanie(t.konanie_id)
@@ -195,10 +221,13 @@ export default function TaskyPage() {
             {k && <span className={'text-[10px] px-1.5 py-0.5 rounded ' + (isSelected ? 'bg-white/10 text-stone-200' : 'bg-stone-100 text-stone-500')}>{k.code}</span>}
             {ko && <span className={'text-[10px] px-1.5 py-0.5 rounded ' + (isSelected ? 'bg-white/10 text-stone-200' : 'bg-stone-100 text-stone-500')}>{ko.code}</span>}
             {t.due_date && <span className={'text-[10px] ' + (isSelected ? 'text-stone-300' : isOverdue(t.due_date) ? 'text-red-500 font-medium' : isSoon(t.due_date) ? 'text-amber-500 font-medium' : 'text-stone-400')}>{formatDate(t.due_date)}</span>}
-            {(cc > 0 || sCount > 0) && (
+            {(cc > 0 || ec > 0 || sCount > 0) && (
               <span className="flex items-center gap-1">
                 {cc > 0 && (
                   <span className={'text-[9px] px-1.5 py-0.5 rounded-full font-medium ' + (isSelected ? 'bg-white/20 text-white' : 'bg-indigo-50 text-indigo-500')} title={cc + ' kontextových záznamov'}>◆ {cc}</span>
+                )}
+                {ec > 0 && (
+                  <span className={'text-[9px] px-1.5 py-0.5 rounded-full font-medium ' + (isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600')} title={ec + ' prepojených udalostí'}>✉ {ec}</span>
                 )}
                 {sCount > 0 && (
                   <span className={'text-[9px] px-1.5 py-0.5 rounded-full font-medium ' + (isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600')} title={sCount + ' chat sedení'}>⌘ {sCount}</span>
@@ -342,6 +371,7 @@ export default function TaskyPage() {
           ) : (function() {
             var st = sc(selectedTask.priority)
             var contexts = getContextsForTask(selectedTask.id)
+            var taskEmailsList = getEmailsForTask(selectedTask.id)
             var taskSessions = getSessionsForTask(selectedTask.id)
             var k = getKauza(selectedTask.kauza_id)
             var ko = getKonanie(selectedTask.konanie_id)
@@ -369,11 +399,73 @@ export default function TaskyPage() {
                     </div>
                   )}
 
+                  {selectedTask.executive_summary && (
+                    <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3">
+                      <div className="text-[10px] uppercase tracking-wider text-indigo-600 font-bold mb-2">Executive summary</div>
+                      <div className="text-sm text-stone-700 whitespace-pre-wrap leading-relaxed">{selectedTask.executive_summary}</div>
+                    </div>
+                  )}
+
                   {selectedTask.description && <p className="text-sm text-stone-500 mt-3 leading-relaxed whitespace-pre-wrap">{selectedTask.description}</p>}
                   {selectedTask.context_summary && (
                     <div className="mt-3 text-xs text-stone-600 bg-indigo-50/50 border-l-2 border-indigo-200 rounded px-3 py-2 whitespace-pre-wrap">
                       <div className="text-[10px] uppercase tracking-wider text-indigo-400 font-medium mb-1">Zhrnutie OPUS kontextu</div>
                       {selectedTask.context_summary}
+                    </div>
+                  )}
+                </div>
+
+                <div className="px-6 py-5 border-b border-stone-100">
+                  <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-3">
+                    Prepojené udalosti ({taskEmailsList.length})
+                  </div>
+                  {taskEmailsList.length === 0 ? (
+                    <div className="text-sm text-stone-400">Žiadne prepojené emaily, podania ani úradné doručenia.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {taskEmailsList.map(function(te) {
+                        var em = te.emails || {}
+                        var relCfg = RELATION_TYPE_CONFIG[te.relation_type] || { label: te.relation_type || 'Vzťah', bg: 'bg-stone-100', text: 'text-stone-600' }
+                        var evtCfg = em.is_pseudo && em.event_type ? EVENT_TYPE_CONFIG[em.event_type] : null
+                        var preview = em.text_body ? (em.text_body.length > 280 ? em.text_body.substring(0, 280) + '…' : em.text_body) : null
+                        var hasMore = em.text_body && em.text_body.length > 280
+                        return (
+                          <div key={te.id} className="rounded-xl border border-stone-200 bg-white px-4 py-3">
+                            <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                              <span className={'text-[10px] font-medium px-1.5 py-0.5 rounded ' + relCfg.bg + ' ' + relCfg.text}>{relCfg.label}</span>
+                              {evtCfg && (
+                                <span className={'text-[10px] font-medium px-1.5 py-0.5 rounded ' + evtCfg.bg + ' ' + evtCfg.text}>{evtCfg.label}</span>
+                              )}
+                              {em.is_pseudo && !evtCfg && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">Mimo SMTP</span>
+                              )}
+                              {em.delivered_via && (
+                                <span className="text-[9px] uppercase tracking-wider text-stone-400">{em.delivered_via}</span>
+                              )}
+                              {em.id && <span className="text-[10px] text-stone-300 ml-auto">✉ #{em.id}</span>}
+                            </div>
+                            <div className="text-sm font-medium text-stone-700 leading-snug">{em.subject || '(bez predmetu)'}</div>
+                            <div className="text-[11px] text-stone-500 mt-0.5">
+                              {em.from_name || em.from_email || '—'}
+                              {em.date && <span className="text-stone-400"> · {formatDateTime(em.date)}</span>}
+                            </div>
+                            {te.note && (
+                              <div className="text-xs text-stone-600 mt-2 bg-stone-50 rounded px-2 py-1.5 italic leading-relaxed">{te.note}</div>
+                            )}
+                            {em.related_document_ids && em.related_document_ids.length > 0 && (
+                              <div className="text-[10px] text-stone-400 mt-2">
+                                {em.related_document_ids.map(function(did) { return '📄 #' + did }).join(' · ')}
+                              </div>
+                            )}
+                            {preview && (
+                              <details className="mt-2">
+                                <summary className="text-[11px] text-stone-500 cursor-pointer hover:text-stone-700">{hasMore ? 'Náhľad textu (' + em.text_body.length + ' znakov)' : 'Text'}</summary>
+                                <div className="text-xs text-stone-600 mt-1.5 whitespace-pre-wrap leading-relaxed bg-stone-50/70 rounded p-2 max-h-96 overflow-y-auto">{em.text_body}</div>
+                              </details>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
