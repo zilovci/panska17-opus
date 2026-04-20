@@ -64,6 +64,16 @@ export default function TaskyPage() {
   var [typeFilter, setTypeFilter] = useState('all')
   var [undoToast, setUndoToast] = useState(null) // { task: {...}, timeoutId }
 
+  // Stav formulára pre novú úlohu
+  var [showNewForm, setShowNewForm] = useState(false)
+  var [newTitle, setNewTitle] = useState('')
+  var [newDescription, setNewDescription] = useState('')
+  var [newPriority, setNewPriority] = useState('normal')
+  var [newKauzaId, setNewKauzaId] = useState('')
+  var [newKonanieId, setNewKonanieId] = useState('')
+  var [newDueDate, setNewDueDate] = useState('')
+  var [savingNew, setSavingNew] = useState(false)
+
   // Auto-dismiss toast po 8 sekundách
   useEffect(function() {
     if (!undoToast) return
@@ -155,6 +165,67 @@ export default function TaskyPage() {
       supabase.from('tasks').update({ manual_order: other.manual_order }).eq('id', task.id),
       supabase.from('tasks').update({ manual_order: task.manual_order }).eq('id', other.id),
     ])
+    loadData()
+  }
+
+  function resetNewForm() {
+    setNewTitle('')
+    setNewDescription('')
+    setNewPriority('normal')
+    setNewKauzaId('')
+    setNewKonanieId('')
+    setNewDueDate('')
+  }
+
+  async function createTask() {
+    var title = newTitle.trim()
+    if (!title) return
+    setSavingNew(true)
+    var payload = {
+      title: title,
+      description: newDescription.trim() || null,
+      priority: newPriority,
+      status: 'open',
+      source_type: 'manual',
+      kauza_id: newKauzaId ? parseInt(newKauzaId) : null,
+      konanie_id: newKonanieId ? parseInt(newKonanieId) : null,
+      due_date: newDueDate || null,
+    }
+    var res = await supabase.from('tasks').insert(payload).select().single()
+    setSavingNew(false)
+    if (res.error) {
+      window.alert('Chyba pri vytváraní úlohy: ' + res.error.message)
+      return
+    }
+    resetNewForm()
+    setShowNewForm(false)
+    await loadData()
+    if (res.data) setSelectedTask(res.data)
+  }
+
+  async function deleteTask(task) {
+    if (!task) return
+    var ctxCount = taskContexts.filter(function(c) { return c.task_id === task.id }).length
+    var emCount = taskEmails.filter(function(e) { return e.task_id === task.id }).length
+    var sCount = sessions.filter(function(s) { return s.task_id === task.id }).length
+    var warning = 'Naozaj zmazať úlohu „' + task.title + '" (#' + task.id + ')?'
+    if (ctxCount + emCount + sCount > 0) {
+      warning += '\n\nPOZOR: zmaže sa s ňou aj '
+      var parts = []
+      if (ctxCount) parts.push(ctxCount + ' kontextových záznamov')
+      if (emCount) parts.push(emCount + ' prepojených emailov/udalostí')
+      if (sCount) parts.push(sCount + ' chat sedení (zostanú v DB ako voľné)')
+      warning += parts.join(', ') + '.'
+    }
+    warning += '\n\nTáto akcia sa nedá vrátiť.'
+    if (!window.confirm(warning)) return
+    var res = await supabase.from('tasks').delete().eq('id', task.id)
+    if (res.error) {
+      window.alert('Chyba pri mazaní: ' + res.error.message)
+      return
+    }
+    setSelectedTask(null)
+    setUndoToast(null)
     loadData()
   }
 
@@ -300,6 +371,84 @@ export default function TaskyPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* LIST */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Nová úloha */}
+          <div>
+            {!showNewForm ? (
+              <button onClick={function() { setShowNewForm(true) }}
+                className="w-full text-left text-xs font-medium text-stone-500 hover:text-stone-800 hover:bg-white border border-dashed border-stone-300 hover:border-stone-400 rounded-xl px-4 py-3 transition-colors">
+                + Nová úloha
+              </button>
+            ) : (
+              <div className="rounded-xl border border-stone-300 bg-white p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Nová úloha</div>
+                  <button onClick={function() { setShowNewForm(false); resetNewForm() }}
+                    className="text-stone-400 hover:text-stone-700 text-sm leading-none">×</button>
+                </div>
+                <input type="text" placeholder="Titulok úlohy" value={newTitle}
+                  onChange={function(e) { setNewTitle(e.target.value) }}
+                  autoFocus
+                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:border-stone-500" />
+                <textarea placeholder="Popis (voliteľné)" value={newDescription}
+                  onChange={function(e) { setNewDescription(e.target.value) }}
+                  rows={3}
+                  className="w-full text-sm border border-stone-200 rounded-lg px-3 py-2 focus:outline-none focus:border-stone-500 resize-y" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-stone-400 mb-1">Priorita</label>
+                    <select value={newPriority}
+                      onChange={function(e) { setNewPriority(e.target.value) }}
+                      className="w-full text-sm border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-stone-500 bg-white">
+                      <option value="urgent">Urgent</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="normal">Normal</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-stone-400 mb-1">Termín</label>
+                    <input type="date" value={newDueDate}
+                      onChange={function(e) { setNewDueDate(e.target.value) }}
+                      className="w-full text-sm border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-stone-500" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-stone-400 mb-1">Kauza (voliteľné)</label>
+                  <select value={newKauzaId}
+                    onChange={function(e) { setNewKauzaId(e.target.value) }}
+                    className="w-full text-sm border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-stone-500 bg-white">
+                    <option value="">— bez kauzy —</option>
+                    {kauzy.slice().sort(function(a, b) { return (a.code || '').localeCompare(b.code || '') }).map(function(k) {
+                      return <option key={k.id} value={k.id}>{k.code} — {k.name}</option>
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase tracking-wider text-stone-400 mb-1">Konanie (voliteľné)</label>
+                  <select value={newKonanieId}
+                    onChange={function(e) { setNewKonanieId(e.target.value) }}
+                    className="w-full text-sm border border-stone-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-stone-500 bg-white">
+                    <option value="">— bez konania —</option>
+                    {konania.slice().sort(function(a, b) { return (a.code || '').localeCompare(b.code || '') }).map(function(ko) {
+                      return <option key={ko.id} value={ko.id}>{ko.code}{ko.case_number ? ' · ' + ko.case_number : ''} — {ko.name}</option>
+                    })}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 justify-end pt-1">
+                  <button onClick={function() { setShowNewForm(false); resetNewForm() }}
+                    className="text-xs text-stone-500 hover:text-stone-800 px-3 py-1.5">
+                    Zrušiť
+                  </button>
+                  <button onClick={createTask} disabled={savingNew || !newTitle.trim()}
+                    className="text-xs font-medium text-white bg-stone-800 hover:bg-stone-900 disabled:bg-stone-300 disabled:cursor-not-allowed rounded-lg px-4 py-1.5 transition-colors">
+                    {savingNew ? 'Pridávam…' : 'Pridať'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {pinnedTasks.length > 0 && (
             <div>
               <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider px-3 py-1 flex items-center gap-1.5">
@@ -393,7 +542,14 @@ export default function TaskyPage() {
                     {isPinned && <span className="text-[10px] px-2 py-0.5 rounded bg-amber-50 text-amber-600">⚲ Na vrchu</span>}
                   </div>
 
-                  <h2 className="text-lg font-semibold text-stone-800">{selectedTask.title}</h2>
+                  <div className="flex items-start gap-3">
+                    <h2 className="text-lg font-semibold text-stone-800 flex-1 min-w-0">{selectedTask.title}</h2>
+                    <button onClick={function() { deleteTask(selectedTask) }}
+                      title="Zmazať úlohu"
+                      className="flex-shrink-0 text-stone-300 hover:text-red-600 text-sm leading-none p-1 -mr-1 -mt-0.5 transition-colors">
+                      🗑
+                    </button>
+                  </div>
 
                   {(k || ko) && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap text-xs">
