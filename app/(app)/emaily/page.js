@@ -88,7 +88,7 @@ function EmailItem({ email, selected, onClick }) {
         <span className="text-[11px] text-stone-400 whitespace-nowrap flex-shrink-0">{formatDate(email.date)}</span>
       </div>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] text-stone-700 truncate leading-snug">{email.subject || '(bez predmetu)'}</span>
+        <span className={'text-[13px] truncate leading-snug ' + (email.deleted_in_mailbox ? 'text-stone-400 line-through' : 'text-stone-700')}>{email.subject || '(bez predmetu)'}</span>
         {email.attachment_count > 0 && (
           <span className="text-[10px] text-stone-400 flex-shrink-0">📎{email.attachment_count}</span>
         )}
@@ -149,6 +149,11 @@ function EmailDetail({ email, attachments }) {
           <div className="flex gap-2 items-center">
             <span className="text-stone-400 w-10 flex-shrink-0">Zdroj:</span>
             <span className={'text-[11px] px-2 py-0.5 rounded-full ' + (email.direction === 'sent' ? 'bg-blue-50 text-blue-600' : 'bg-stone-100 text-stone-500')}>{email.source_file}</span>
+            {email.deleted_in_mailbox && (
+              <span className="text-[11px] text-stone-500 bg-stone-200 px-2 py-0.5 rounded-full" title="V exportoch z Thunderbirdu už nie je; v databáze ostáva ako záloha">
+                zmazané v Thunderbirde
+              </span>
+            )}
             {email.forwarded_from_email && (
               <span className="text-[11px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                 ↪ pôv. od: {email.forwarded_from_name || email.forwarded_from_email}
@@ -230,6 +235,8 @@ export default function EmilyPage() {
   var [dateFrom, setDateFrom] = useState('')
   var [dateTo, setDateTo] = useState('')
   var [showFilters, setShowFilters] = useState(false)
+  // Emaily zmazané v Thunderbirde ostávajú v databáze ako záloha; bežne sa neukazujú.
+  var [showDeleted, setShowDeleted] = useState(false)
   var [collection, setCollection] = useState('')
   var [collections, setCollections] = useState([])
 
@@ -286,12 +293,15 @@ export default function EmilyPage() {
       var offset = page * pageSize
       var query = supabase
         .from('emails')
-        .select('id, date, from_name, from_email, to_addresses, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name', { count: 'exact' })
+        .select('id, date, from_name, from_email, to_addresses, subject, direction, source_file, attachment_count, has_attachments, forwarded_from_name, deleted_in_mailbox', { count: 'exact' })
         .order('date', { ascending: false })
         .range(offset, offset + pageSize - 1)
 
       if (collectionEmailIds) {
         query = query.in('id', collectionEmailIds)
+      } else if (!showDeleted) {
+        // v kolekcii sa ukáže všetko, čo do nej bolo vložené; inak len emaily, ktoré v schránke naozaj sú
+        query = query.eq('deleted_in_mailbox', false)
       }
       if (person) {
         query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
@@ -311,7 +321,7 @@ export default function EmilyPage() {
       console.error('Chyba:', err)
     }
     setLoading(false)
-  }, [page, pageSize, person, folder, dateFrom, dateTo, debouncedSearch, collection])
+  }, [page, pageSize, person, folder, dateFrom, dateTo, debouncedSearch, collection, showDeleted])
 
   useEffect(function() { fetchEmails() }, [fetchEmails])
 
@@ -321,7 +331,7 @@ export default function EmilyPage() {
     setSelected(null)
     setSelectedFull(null)
     setAttachments([])
-  }, [person, folder, dateFrom, dateTo, debouncedSearch, collection])
+  }, [person, folder, dateFrom, dateTo, debouncedSearch, collection, showDeleted])
 
   // ─── Select email — load full content ──────────────────
   async function selectEmail(email) {
@@ -372,7 +382,7 @@ export default function EmilyPage() {
             />
             <button
               onClick={function() { setShowFilters(!showFilters) }}
-              className={'px-2.5 py-2 text-sm border rounded-lg transition-colors ' + (showFilters || person || folder || dateFrom || dateTo || collection ? 'border-stone-400 bg-stone-100 text-stone-700' : 'border-stone-200 bg-white text-stone-400 hover:text-stone-600')}
+              className={'px-2.5 py-2 text-sm border rounded-lg transition-colors ' + (showFilters || person || folder || dateFrom || dateTo || collection || showDeleted ? 'border-stone-400 bg-stone-100 text-stone-700' : 'border-stone-200 bg-white text-stone-400 hover:text-stone-600')}
               title="Filtre"
             >⚙</button>
           </div>
@@ -425,14 +435,22 @@ export default function EmilyPage() {
                   className="flex-1 text-[11px] px-2 py-1.5 border border-stone-200 rounded-lg bg-white text-stone-500 focus:outline-none"
                   placeholder="Do"
                 />
-                {(dateFrom || dateTo || person || folder || search || collection) && (
+                {(dateFrom || dateTo || person || folder || search || collection || showDeleted) && (
                   <button
-                    onClick={function() { setSearch(''); setPerson(''); setFolder(''); setDateFrom(''); setDateTo(''); setCollection('') }}
+                    onClick={function() { setSearch(''); setPerson(''); setFolder(''); setDateFrom(''); setDateTo(''); setCollection(''); setShowDeleted(false) }}
                     className="text-[11px] px-2 py-1.5 text-stone-400 hover:text-stone-600"
                     title="Vyčistiť filtre"
                   >✕</button>
                 )}
               </div>
+              <label className="flex items-center gap-1.5 text-[11px] text-stone-500 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showDeleted}
+                  onChange={function(e) { setShowDeleted(e.target.checked) }}
+                />
+                Aj emaily zmazané v Thunderbirde (záloha)
+              </label>
             </>
           )}
         </div>
