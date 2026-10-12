@@ -24,6 +24,7 @@ export default function HladaniePage() {
         .select('id,subject,from_name,from_email,to_addresses,cc_addresses,date,text_body,has_attachments,attachment_count')
         .or('subject.ilike.' + q + ',text_body.ilike.' + q + ',from_name.ilike.' + q)
         .eq('deleted_in_mailbox', false)
+        .not('is_duplicate', 'is', true)
         .order('date', { ascending: false })
         .limit(30),
       supabase.from('email_attachments')
@@ -44,13 +45,13 @@ export default function HladaniePage() {
     if (attachData.length > 0) {
       var emailIds = [...new Set(attachData.map(function(a) { return a.email_id }))]
       var { data: parents } = await supabase.from('emails')
-        .select('id,subject,from_name,date,deleted_in_mailbox')
+        .select('id,subject,from_name,date,deleted_in_mailbox,is_duplicate')
         .in('id', emailIds)
       if (parents) {
         parents.forEach(function(p) { parentEmails[p.id] = p })
       }
       // prílohy emailov zmazaných v Thunderbirde sa neukazujú
-      attachData = attachData.filter(function(a) { var p = parentEmails[a.email_id]; return !(p && p.deleted_in_mailbox) })
+      attachData = attachData.filter(function(a) { var p = parentEmails[a.email_id]; return !(p && (p.deleted_in_mailbox || p.is_duplicate)) })
     }
 
     setResults({

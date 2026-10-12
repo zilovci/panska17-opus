@@ -10,7 +10,7 @@ export default function DashboardPage() {
 
   var loadData = useCallback(async function() {
     var [emailsR, docsR, temyR, kauzyR, konaniaR, tasksR, strategiaR, tkR, vzorceR, kvR] = await Promise.all([
-      supabase.from('emails').select('id', { count: 'exact', head: true }).eq('deleted_in_mailbox', false),
+      supabase.from('emails').select('id', { count: 'exact', head: true }).eq('deleted_in_mailbox', false).not('is_duplicate', 'is', true),
       supabase.from('documents').select('id', { count: 'exact', head: true }).eq('deleted_on_disk', false),
       supabase.from('temy').select('*').order('id'),
       supabase.from('kauzy').select('*').order('id'),

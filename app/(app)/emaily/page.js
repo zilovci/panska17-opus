@@ -303,6 +303,10 @@ export default function EmilyPage() {
         // v kolekcii sa ukáže všetko, čo do nej bolo vložené; inak len emaily, ktoré v schránke naozaj sú
         query = query.eq('deleted_in_mailbox', false)
       }
+      if (!collectionEmailIds) {
+        // ručné kópie z chatu, ktoré sú v databáze aj zo schránky (is_duplicate), sa neukazujú dvakrát
+        query = query.not('is_duplicate', 'is', true)
+      }
       if (person) {
         query = query.or('from_name.ilike.%' + person + '%,from_email.ilike.%' + person + '%,forwarded_from_name.ilike.%' + person + '%,forwarded_from_email.ilike.%' + person + '%,subject.ilike.%' + person + '%')
       }
